@@ -6,7 +6,7 @@ import { makeProvider } from "./provider";
 import { Template } from "./template";
 import type { Formatter, Input, Merged, Variants } from "./types";
 
-export type TranslationsConfig<L extends string> = {
+export type I18nConfig<L extends string> = {
   locales: readonly L[];
   onFallback?: FallbackHandler<L>;
 };
@@ -16,7 +16,7 @@ export type ResolvedDictionary<L extends string, D extends Input<L>> = Merged<
   D
 >;
 
-export class Translations<const L extends string> {
+export class I18n<const L extends string> {
   readonly locales: readonly L[];
   readonly LocaleProvider: ReturnType<typeof makeProvider<L>>["LocaleProvider"];
   readonly useLocale: ReturnType<typeof makeProvider<L>>["useLocale"];
@@ -26,10 +26,10 @@ export class Translations<const L extends string> {
 
   readonly #onFallback?: FallbackHandler<L>;
 
-  constructor(config: TranslationsConfig<L>) {
+  constructor(config: I18nConfig<L>) {
     if (config.locales.length === 0) {
       throw new Error(
-        "Reacti8n: Translations requires at least one locale in config.locales.",
+        "Reacti8n: I18n requires at least one locale in config.locales.",
       );
     }
     this.locales = config.locales;

@@ -25,9 +25,9 @@ Configure once in your app entry. The class returns a typed instance scoped to y
 
 ```ts
 // src/i18n.ts
-import { Translations } from "reacti8n";
+import { I18n } from "reacti8n";
 
-export const i18n = new Translations({
+export const i18n = new I18n({
   locales: ["en", "fr", "de"] as const,
   onFallback: (event) => {
     // event: { key, requested, resolved }
@@ -65,7 +65,10 @@ function LanguageSwitcher() {
   return (
     <select
       value={locale}
-      onChange={(event) => setLocale(event.target.value as never)}
+      onChange={(event) => {
+        const next = event.target.value;
+        if (i18n.isLocale(next)) setLocale(next);
+      }}
     >
       {i18n.locales.map((supportedLocale) => (
         <option key={supportedLocale} value={supportedLocale}>
@@ -76,6 +79,8 @@ function LanguageSwitcher() {
   );
 }
 ```
+
+`i18n.isLocale(value)` is a type guard returning `value is L`, so `next` narrows to the locale union inside the branch — no casts needed.
 
 ## Defining messages
 
@@ -150,7 +155,7 @@ Plain string entries become strings on the resolved object. Template entries bec
 
 ## Fallback observability
 
-A common operational worry with i18n is "missing translations shipped quietly." Reacti8n calls the `onFallback` handler (registered on `new Translations()`) every time a dictionary entry resolves to a non-requested locale, or to `null` when the key is missing entirely.
+A common operational worry with i18n is "missing translations shipped quietly." Reacti8n calls the `onFallback` handler (registered on `new I18n()`) every time a dictionary entry resolves to a non-requested locale, or to `null` when the key is missing entirely.
 
 ```ts
 type FallbackEvent<L> = {
@@ -163,7 +168,7 @@ type FallbackEvent<L> = {
 Pipe these into Sentry / Datadog / your logger of choice:
 
 ```ts
-new Translations({
+new I18n({
   locales: ["en", "fr", "de"] as const,
   onFallback: ({ key, requested, resolved }) => {
     if (resolved === null) {

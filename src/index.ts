@@ -1,8 +1,5 @@
-export { Translations } from "./translations";
-export type {
-  ResolvedDictionary,
-  TranslationsConfig,
-} from "./translations";
+export { I18n } from "./i18n";
+export type { I18nConfig, ResolvedDictionary } from "./i18n";
 
 export { Dictionary } from "./dictionary";
 export type { FallbackEvent, FallbackHandler } from "./dictionary";
