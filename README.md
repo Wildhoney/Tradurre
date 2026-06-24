@@ -29,7 +29,7 @@ import { I18n } from "reacti8n";
 
 export const i18n = new I18n({
   locales: ["en", "fr", "de"] as const,
-  onFallback: (event) => {
+  onFallback(event) {
     // event: { key, requested, resolved }
     // Fires whenever a key resolves to a non-requested locale,
     // or to null when the key is missing everywhere.
@@ -178,7 +178,7 @@ Pipe these into Sentry / Datadog / your logger of choice:
 ```ts
 new I18n({
   locales: ["en", "fr", "de"] as const,
-  onFallback: ({ key, requested, resolved }) => {
+  onFallback({ key, requested, resolved }) {
     if (resolved === null) {
       Sentry.captureException(
         new Error(`i18n key "${key}" is missing in every locale`),
