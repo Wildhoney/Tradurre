@@ -84,7 +84,7 @@ function LanguageSwitcher() {
 
 ## Defining messages
 
-A dictionary is a flat record of message-id → variants. Each entry is either a plain `{ en, fr, ... }` map or an `i18n.template<Args>({ ... })` wrapper for messages that take arguments. Template formatters receive `(args, helpers)` — `helpers` is locale-bound and exposes `numberFormat`, `dateTimeFormat`, and `pluralRules` factories that return memoisable `Intl` instances.
+A dictionary is a flat record of message-id → variants. Each entry is either a plain `{ en, fr, ... }` map or an `i18n.template<Args>({ ... })` wrapper for messages that take arguments. Template formatters receive a single `{ tokens, helpers }` payload — `tokens` is the typed args object you pass at the call site; `helpers` is locale-bound and exposes `numberFormat`, `dateTimeFormat`, and `pluralRules` factories that return `Intl` instances.
 
 ```ts
 import { i18n } from "./i18n";
@@ -95,44 +95,46 @@ export const translations = i18n.dictionary({
 
   // Function variants with explicit args (recommended).
   greet: i18n.template<{ name: string }>({
-    en({ name }) {
-      return `Hello, ${name}`;
+    en({ tokens }) {
+      return `Hello, ${tokens.name}`;
     },
-    fr({ name }) {
-      return `Bonjour, ${name}`;
+    fr({ tokens }) {
+      return `Bonjour, ${tokens.name}`;
     },
-    de({ name }) {
-      return `Hallo, ${name}`;
+    de({ tokens }) {
+      return `Hallo, ${tokens.name}`;
     },
   }),
 
   // Plurals via Intl.PluralRules, exposed through helpers.
   items: i18n.template<{ count: number }>({
-    en({ count }, helpers) {
-      const category = helpers.pluralRules().select(count);
-      return category === "one" ? "1 item" : `${count} items`;
+    en({ tokens, helpers }) {
+      const category = helpers.pluralRules().select(tokens.count);
+      return category === "one" ? "1 item" : `${tokens.count} items`;
     },
-    fr({ count }, helpers) {
-      const category = helpers.pluralRules().select(count);
-      return category === "one" ? `${count} article` : `${count} articles`;
+    fr({ tokens, helpers }) {
+      const category = helpers.pluralRules().select(tokens.count);
+      return category === "one"
+        ? `${tokens.count} article`
+        : `${tokens.count} articles`;
     },
-    de({ count }, helpers) {
-      const category = helpers.pluralRules().select(count);
-      return category === "one" ? "1 Eintrag" : `${count} Einträge`;
+    de({ tokens, helpers }) {
+      const category = helpers.pluralRules().select(tokens.count);
+      return category === "one" ? "1 Eintrag" : `${tokens.count} Einträge`;
     },
   }),
 
   // Currency formatting via helpers.
   balance: i18n.template<{ amount: number }>({
-    en({ amount }, helpers) {
+    en({ tokens, helpers }) {
       return `Balance: ${helpers
         .numberFormat({ style: "currency", currency: "USD" })
-        .format(amount)}`;
+        .format(tokens.amount)}`;
     },
-    fr({ amount }, helpers) {
+    fr({ tokens, helpers }) {
       return `Solde : ${helpers
         .numberFormat({ style: "currency", currency: "EUR" })
-        .format(amount)}`;
+        .format(tokens.amount)}`;
     },
   }),
 

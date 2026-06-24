@@ -1,7 +1,9 @@
 import type { Helpers } from "./helpers";
 import type { Template } from "./template";
 
-export type Formatter<Args> = (args: Args, helpers: Helpers) => string;
+export type FormatterPayload<Args> = { tokens: Args; helpers: Helpers };
+
+export type Formatter<Args> = (payload: FormatterPayload<Args>) => string;
 
 export type AtLeastOne<T> = {
   [K in keyof T]-?: Required<Pick<T, K>> & Partial<Omit<T, K>>;

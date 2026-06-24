@@ -16,8 +16,12 @@ function fixed(locale: "en" | "fr") {
 describe("useI18n()", () => {
   const dict = dictionary({
     greet: template<{ name: string }>({
-      en: ({ name }) => `Hello, ${name}`,
-      fr: ({ name }) => `Bonjour, ${name}`,
+      en({ tokens }) {
+        return `Hello, ${tokens.name}`;
+      },
+      fr({ tokens }) {
+        return `Bonjour, ${tokens.name}`;
+      },
     }),
   });
 

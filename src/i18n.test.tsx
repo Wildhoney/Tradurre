@@ -8,21 +8,29 @@ const i18n = new I18n({ locales: ["en", "fr", "de"] as const });
 
 const translations = i18n.dictionary({
   greet: i18n.template<{ name: string }>({
-    en: ({ name }) => `Hello, ${name}`,
-    fr: ({ name }) => `Bonjour, ${name}`,
-    de: ({ name }) => `Hallo, ${name}`,
+    en({ tokens }) {
+      return `Hello, ${tokens.name}`;
+    },
+    fr({ tokens }) {
+      return `Bonjour, ${tokens.name}`;
+    },
+    de({ tokens }) {
+      return `Hallo, ${tokens.name}`;
+    },
   }),
   ok: { en: "OK", fr: "Accepter", de: "OK" },
   auRevoir: { fr: "Au revoir" },
   balance: i18n.template<{ amount: number }>({
-    en: ({ amount }, helpers) =>
-      `Balance: ${helpers
+    en({ tokens, helpers }) {
+      return `Balance: ${helpers
         .numberFormat({ style: "currency", currency: "USD" })
-        .format(amount)}`,
-    fr: ({ amount }, helpers) =>
-      `Solde : ${helpers
+        .format(tokens.amount)}`;
+    },
+    fr({ tokens, helpers }) {
+      return `Solde : ${helpers
         .numberFormat({ style: "currency", currency: "EUR" })
-        .format(amount)}`,
+        .format(tokens.amount)}`;
+    },
   }),
 });
 

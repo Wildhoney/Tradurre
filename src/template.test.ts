@@ -6,7 +6,9 @@ import { Template, makeTemplate } from "./template";
 describe("Template", () => {
   it("stores the variants record on the instance", () => {
     const variants = {
-      en: ({ name }: { name: string }) => `Hi, ${name}`,
+      en({ tokens }: { tokens: { name: string } }) {
+        return `Hi, ${tokens.name}`;
+      },
     };
     const message = new Template<"en", { name: string }>(variants);
     expect(message.variants).toBe(variants);
@@ -17,25 +19,33 @@ describe("makeTemplate()", () => {
   it("returns a template helper bound to the locale set", () => {
     const template = makeTemplate<"en" | "fr">();
     const message = template<{ name: string }>({
-      en: ({ name }) => `Hello, ${name}`,
-      fr: ({ name }) => `Bonjour, ${name}`,
+      en({ tokens }) {
+        return `Hello, ${tokens.name}`;
+      },
+      fr({ tokens }) {
+        return `Bonjour, ${tokens.name}`;
+      },
     });
     expect(message).toBeInstanceOf(Template);
     expect(
-      message.variants.en?.({ name: "Imogen" }, makeHelpers("en")),
+      message.variants.en?.({ tokens: { name: "Imogen" }, helpers: makeHelpers("en") }),
     ).toBe("Hello, Imogen");
   });
 
-  it("passes locale-bound helpers as the second formatter argument", () => {
+  it("passes locale-bound helpers in the formatter payload", () => {
     const template = makeTemplate<"en" | "fr">();
     const message = template<{ amount: number }>({
-      en: ({ amount }, helpers) =>
-        `Balance: ${helpers
+      en({ tokens, helpers }) {
+        return `Balance: ${helpers
           .numberFormat({ style: "currency", currency: "USD" })
-          .format(amount)}`,
+          .format(tokens.amount)}`;
+      },
     });
     expect(
-      message.variants.en?.({ amount: 1234.5 }, makeHelpers("en")),
+      message.variants.en?.({
+        tokens: { amount: 1234.5 },
+        helpers: makeHelpers("en"),
+      }),
     ).toBe("Balance: $1,234.50");
   });
 });

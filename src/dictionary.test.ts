@@ -26,8 +26,12 @@ describe("Dictionary.resolve()", () => {
   it("invokes Template variants with the supplied args", () => {
     const dict = dictionary({
       greet: template<{ name: string }>({
-        en: ({ name }) => `Hello, ${name}`,
-        fr: ({ name }) => `Bonjour, ${name}`,
+        en({ tokens }) {
+          return `Hello, ${tokens.name}`;
+        },
+        fr({ tokens }) {
+          return `Bonjour, ${tokens.name}`;
+        },
       }),
     });
     expect(dict.resolve("en").greet({ name: "Imogen" })).toBe(
@@ -41,14 +45,16 @@ describe("Dictionary.resolve()", () => {
   it("passes locale-bound helpers to Template formatters", () => {
     const dict = dictionary({
       balance: template<{ amount: number }>({
-        en: ({ amount }, helpers) =>
-          helpers
+        en({ tokens, helpers }) {
+          return helpers
             .numberFormat({ style: "currency", currency: "USD" })
-            .format(amount),
-        fr: ({ amount }, helpers) =>
-          helpers
+            .format(tokens.amount);
+        },
+        fr({ tokens, helpers }) {
+          return helpers
             .numberFormat({ style: "currency", currency: "EUR" })
-            .format(amount),
+            .format(tokens.amount);
+        },
       }),
     });
     expect(dict.resolve("en").balance({ amount: 1234.5 })).toBe(
@@ -65,8 +71,9 @@ describe("Dictionary.resolve()", () => {
   it("supports dateTimeFormat via helpers in Template formatters", () => {
     const dict = dictionary({
       sentOn: template<{ when: Date }>({
-        en: ({ when }, helpers) =>
-          helpers.dateTimeFormat({ dateStyle: "short" }).format(when),
+        en({ tokens, helpers }) {
+          return helpers.dateTimeFormat({ dateStyle: "short" }).format(tokens.when);
+        },
       }),
     });
     const when = new Date("2026-06-24T00:00:00Z");
@@ -78,9 +85,9 @@ describe("Dictionary.resolve()", () => {
   it("supports pluralRules via helpers in Template formatters", () => {
     const dict = dictionary({
       items: template<{ count: number }>({
-        en: ({ count }, helpers) => {
-          const category = helpers.pluralRules().select(count);
-          return category === "one" ? "1 item" : `${count} items`;
+        en({ tokens, helpers }) {
+          const category = helpers.pluralRules().select(tokens.count);
+          return category === "one" ? "1 item" : `${tokens.count} items`;
         },
       }),
     });
@@ -91,7 +98,9 @@ describe("Dictionary.resolve()", () => {
   it("falls back through locales for a Template missing the active variant", () => {
     const dict = dictionary({
       goodbye: template<{ name: string }>({
-        en: ({ name }) => `Goodbye, ${name}`,
+        en({ tokens }) {
+          return `Goodbye, ${tokens.name}`;
+        },
       }),
     });
     expect(dict.resolve("fr").goodbye({ name: "Imogen" })).toBe(
@@ -137,7 +146,9 @@ describe("Dictionary.resolve()", () => {
     );
     const dict = localDictionary({
       goodbye: template<{ name: string }>({
-        en: ({ name }) => `Goodbye, ${name}`,
+        en({ tokens }) {
+          return `Goodbye, ${tokens.name}`;
+        },
       }),
     });
     (dict.resolve("fr").goodbye as (args: { name: string }) => string)({

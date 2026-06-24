@@ -2,7 +2,7 @@ import { makeHelpers, type Helpers } from "./helpers";
 import { Template } from "./template";
 import type { Input, Merged } from "./types";
 
-type Formatter = (args: unknown, helpers: Helpers) => string;
+type Formatter = (payload: { tokens: unknown; helpers: Helpers }) => string;
 
 export type FallbackEvent<L extends string> = {
   key: string;
@@ -50,7 +50,8 @@ export class Dictionary<L extends string, D extends Input<L>> {
         locale,
       );
       if (typeof formatter === "function") {
-        return (args: unknown) => (formatter as Formatter)(args, helpers);
+        return (tokens: unknown) =>
+          (formatter as Formatter)({ tokens, helpers });
       }
       return formatter;
     }
