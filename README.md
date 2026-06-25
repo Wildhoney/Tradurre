@@ -122,7 +122,7 @@ A dictionary is a flat record of message-id → variants. Each entry is either a
 import { i18n } from "./i18n";
 
 namespace Template {
-  type Greet = { name: string }
+  type Greet = { name: string };
 }
 
 export const translations = i18n.dictionary({
