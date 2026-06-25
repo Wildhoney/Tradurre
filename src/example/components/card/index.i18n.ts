@@ -1,54 +1,11 @@
-import { i18n, Locale } from "./i18n";
-
-namespace Template {
-  export type Price = { amount: number };
-}
+import { Locale, i18n } from "../../i18n";
+import type { Tokens } from "./types";
 
 export const dictionary = i18n.dictionary({
-  appTitle: {
-    [Locale.En]: "Reacti8n · Coffee Menu",
-    [Locale.Fr]: "Reacti8n · Carte des Cafés",
-    [Locale.De]: "Reacti8n · Kaffeekarte",
-    [Locale.It]: "Reacti8n · Menù del Caffè",
-    [Locale.Es]: "Reacti8n · Carta de Cafés",
-    [Locale.Ar]: "Reacti8n · قائمة القهوة",
-    [Locale.Ru]: "Reacti8n · Меню кофе",
-    [Locale.Uk]: "Reacti8n · Меню кави",
-    [Locale.Ka]: "Reacti8n · ყავის მენიუ",
-    [Locale.Zh]: "Reacti8n · 咖啡菜单",
-  },
-  tagline: {
-    [Locale.En]: "Tiny, type-safe i18n for React — demonstrated on caffeine.",
-    [Locale.Fr]: "Un i18n compact et typé pour React — illustré à la caféine.",
-    [Locale.De]:
-      "Schlankes, typsicheres i18n für React — am Koffein demonstriert.",
-    [Locale.It]:
-      "Un i18n compatto e tipizzato per React — dimostrato con caffeina.",
-    [Locale.Es]:
-      "Un i18n compacto y tipado para React — demostrado con cafeína.",
-    [Locale.Ar]: "i18n صغير وآمن من ناحية الأنواع لـ React — موضّح بالكافيين.",
-    [Locale.Ru]: "Компактная типобезопасная i18n для React — на примере кофе.",
-    [Locale.Uk]: "Компактна типобезпечна i18n для React — на прикладі кави.",
-    [Locale.Ka]:
-      "მცირე, ტიპურად უსაფრთხო i18n React-ისთვის — კოფეინზე ნაჩვენები.",
-    [Locale.Zh]: "小巧、类型安全的 React i18n — 以咖啡为例。",
-  },
-  languageLabel: {
-    [Locale.En]: "Language",
-    [Locale.Fr]: "Langue",
-    [Locale.De]: "Sprache",
-    [Locale.It]: "Lingua",
-    [Locale.Es]: "Idioma",
-    [Locale.Ar]: "اللغة",
-    [Locale.Ru]: "Язык",
-    [Locale.Uk]: "Мова",
-    [Locale.Ka]: "ენა",
-    [Locale.Zh]: "语言",
-  },
-  price: i18n.template<Template.Price>({
+  price: i18n.template<Tokens.Price>({
     [Locale.En]({ tokens, helpers }) {
       return helpers
-        .numberFormat({ style: "currency", currency: "USD" })
+        .numberFormat({ style: "currency", currency: "GBP" })
         .format(tokens.amount);
     },
     [Locale.Fr]({ tokens, helpers }) {
@@ -74,6 +31,11 @@ export const dictionary = i18n.dictionary({
     [Locale.Ar]({ tokens, helpers }) {
       return helpers
         .numberFormat({ style: "currency", currency: "AED" })
+        .format(tokens.amount);
+    },
+    [Locale.Ja]({ tokens, helpers }) {
+      return helpers
+        .numberFormat({ style: "currency", currency: "JPY" })
         .format(tokens.amount);
     },
     [Locale.Ru]({ tokens, helpers }) {
@@ -105,6 +67,7 @@ export const dictionary = i18n.dictionary({
     [Locale.It]: "Espresso",
     [Locale.Es]: "Espresso",
     [Locale.Ar]: "إسبريسو",
+    [Locale.Ja]: "エスプレッソ",
     [Locale.Ru]: "Эспрессо",
     [Locale.Uk]: "Еспресо",
     [Locale.Ka]: "ესპრესო",
@@ -123,6 +86,8 @@ export const dictionary = i18n.dictionary({
       "Un café corto y concentrado, preparado pasando agua caliente bajo presión a través de granos finamente molidos.",
     [Locale.Ar]:
       "جرعة قهوة قصيرة ومركّزة، تُحضَّر بدفع الماء الساخن تحت الضغط عبر حبوب مطحونة ناعماً.",
+    [Locale.Ja]:
+      "細かく挽いた豆に高圧の熱湯を通して抽出した、小さく濃厚なショット。",
     [Locale.Ru]:
       "Маленькая концентрированная порция кофе, приготовленная пропусканием горячей воды под давлением через мелко молотые зёрна.",
     [Locale.Uk]:
@@ -139,6 +104,7 @@ export const dictionary = i18n.dictionary({
     [Locale.It]: "Cappuccino",
     [Locale.Es]: "Cappuccino",
     [Locale.Ar]: "كابتشينو",
+    [Locale.Ja]: "カプチーノ",
     [Locale.Ru]: "Капучино",
     [Locale.Uk]: "Капучино",
     [Locale.Ka]: "კაპუჩინო",
@@ -157,6 +123,8 @@ export const dictionary = i18n.dictionary({
       "Un espresso con partes iguales de leche caliente y una espesa corona de espuma de leche.",
     [Locale.Ar]:
       "كميات متساوية من الإسبريسو والحليب المبخّر، يعلوها تاج كثيف من رغوة الحليب.",
+    [Locale.Ja]:
+      "エスプレッソ、スチームミルク、そして厚いミルクフォームの王冠が等しい割合。",
     [Locale.Ru]:
       "Равные части эспрессо и взбитого молока, увенчанные густой шапкой молочной пены.",
     [Locale.Uk]:
@@ -173,6 +141,7 @@ export const dictionary = i18n.dictionary({
     [Locale.It]: "Caffè Latte",
     [Locale.Es]: "Café con Leche",
     [Locale.Ar]: "لاتيه",
+    [Locale.Ja]: "ラテ",
     [Locale.Ru]: "Латте",
     [Locale.Uk]: "Лате",
     [Locale.Ka]: "ლატე",
@@ -191,6 +160,8 @@ export const dictionary = i18n.dictionary({
       "Una generosa cantidad de leche caliente vertida sobre un espresso, coronada por una fina capa de espuma.",
     [Locale.Ar]:
       "كمية وفيرة من الحليب المبخّر فوق جرعة إسبريسو، تعلوها طبقة رقيقة من الرغوة.",
+    [Locale.Ja]:
+      "シングルショットのエスプレッソの上にたっぷりのスチームミルクを注ぎ、薄いフォームの層をかぶせる。",
     [Locale.Ru]:
       "Щедрая порция взбитого молока поверх одного эспрессо, увенчанная тонким слоем пены.",
     [Locale.Uk]:
@@ -207,6 +178,7 @@ export const dictionary = i18n.dictionary({
     [Locale.It]: "Moka",
     [Locale.Es]: "Moca",
     [Locale.Ar]: "موكا",
+    [Locale.Ja]: "モカ",
     [Locale.Ru]: "Мокка",
     [Locale.Uk]: "Мока",
     [Locale.Ka]: "მოკა",
@@ -225,6 +197,8 @@ export const dictionary = i18n.dictionary({
       "Una variante achocolatada del latte — espresso, leche caliente y un toque de chocolate oscuro.",
     [Locale.Ar]:
       "تنويعة شوكولاتية من اللاتيه — إسبريسو، حليب مبخّر، ولمسة من الشوكولاتة الداكنة.",
+    [Locale.Ja]:
+      "チョコレート風味のラテ — エスプレッソ、スチームミルク、ダークチョコレートの渦巻き。",
     [Locale.Ru]:
       "Шоколадная вариация латте — эспрессо, взбитое молоко и завихрение тёмного шоколада.",
     [Locale.Uk]:
@@ -241,6 +215,7 @@ export const dictionary = i18n.dictionary({
     [Locale.It]: "Americano",
     [Locale.Es]: "Americano",
     [Locale.Ar]: "أمريكانو",
+    [Locale.Ja]: "アメリカーノ",
     [Locale.Ru]: "Американо",
     [Locale.Uk]: "Американо",
     [Locale.Ka]: "ამერიკანო",
@@ -259,6 +234,7 @@ export const dictionary = i18n.dictionary({
       "Un espresso alargado con agua caliente para una taza más suave, estilo café de filtro.",
     [Locale.Ar]:
       "إسبريسو مخفّف بالماء الساخن لفنجان أكثر نعومةً، بأسلوب القهوة المقطرة.",
+    [Locale.Ja]: "エスプレッソをお湯で薄めた、ドリップ風の口当たりの良い一杯。",
     [Locale.Ru]:
       "Эспрессо, разбавленный горячей водой, для более мягкой чашки в стиле фильтр-кофе.",
     [Locale.Uk]:
@@ -275,6 +251,7 @@ export const dictionary = i18n.dictionary({
     [Locale.It]: "Flat White",
     [Locale.Es]: "Flat White",
     [Locale.Ar]: "فلات وايت",
+    [Locale.Ja]: "フラットホワイト",
     [Locale.Ru]: "Флэт уайт",
     [Locale.Uk]: "Флет-вайт",
     [Locale.Ka]: "ფლეტ ვაიტი",
@@ -293,6 +270,8 @@ export const dictionary = i18n.dictionary({
       "Un doble espresso con microespuma aterciopelada — más intenso que un latte, más suave que un cappuccino.",
     [Locale.Ar]:
       "إسبريسو مزدوج تعلوه رغوة دقيقة كالحرير — أقوى من اللاتيه، أنعم من الكابتشينو.",
+    [Locale.Ja]:
+      "ダブルエスプレッソにベルベットのようなマイクロフォームをのせた — ラテより力強く、カプチーノよりまろやか。",
     [Locale.Ru]:
       "Двойной эспрессо с бархатистой микропеной — насыщеннее латте, мягче капучино.",
     [Locale.Uk]:
