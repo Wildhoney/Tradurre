@@ -348,7 +348,7 @@ type ResolvedTemplateMeta = {
 
 `direction` is a flat shortcut for `locale.textInfo.direction` — the common case is "swap the layout for RTL," which is one read.
 
-Plain string variants (`copy.ok`) remain raw strings and don't carry this metadata — a `string` literal can't sprout properties without boxing. For those, `new Intl.Locale(i18n.useLocale().locale).textInfo.direction` gives you the active locale's direction directly. If you need _resolved-locale_ direction on a non-templated message, wrap it in `i18n.template<{}>({...})` so it becomes a callable that carries `.direction` and `.locale`.
+Plain string variants (`copy.ok`) remain raw strings and don't carry this metadata — a `string` literal can't sprout properties without boxing. For those, `new Intl.Locale(i18n.useLocale().locale).textInfo.direction` gives you the active locale's direction directly. If you need _resolved-locale_ direction on a non-templated message, wrap it in `i18n.template({ ... })` so it becomes a callable that carries `.direction` and `.locale` — the `Args` generic defaults to `object`, so no token type is needed.
 
 ## Strict mode
 

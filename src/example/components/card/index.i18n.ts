@@ -60,7 +60,7 @@ export const dictionary = i18n.dictionary({
     },
   }),
 
-  espressoName: i18n.template<object>({
+  espressoName: i18n.template({
     [Locale.En]: () => "Espresso",
     [Locale.Fr]: () => "Expresso",
     [Locale.De]: () => "Espresso",
@@ -73,7 +73,7 @@ export const dictionary = i18n.dictionary({
     [Locale.Ka]: () => "ესპრესო",
     [Locale.Zh]: () => "浓缩咖啡",
   }),
-  espressoDescription: i18n.template<object>({
+  espressoDescription: i18n.template({
     [Locale.En]: () =>
       "A small, concentrated shot brewed by forcing hot water through finely-ground beans under pressure.",
     [Locale.Fr]: () =>
@@ -97,7 +97,7 @@ export const dictionary = i18n.dictionary({
     [Locale.Zh]: () => "用细磨咖啡豆在高压下萃取的小份浓缩咖啡。",
   }),
 
-  cappuccinoName: i18n.template<object>({
+  cappuccinoName: i18n.template({
     [Locale.En]: () => "Cappuccino",
     [Locale.Fr]: () => "Cappuccino",
     [Locale.De]: () => "Cappuccino",
@@ -110,7 +110,7 @@ export const dictionary = i18n.dictionary({
     [Locale.Ka]: () => "კაპუჩინო",
     [Locale.Zh]: () => "卡布奇诺",
   }),
-  cappuccinoDescription: i18n.template<object>({
+  cappuccinoDescription: i18n.template({
     [Locale.En]: () =>
       "Equal parts espresso, steamed milk, and a thick crown of milk foam.",
     [Locale.Fr]: () =>
@@ -134,7 +134,7 @@ export const dictionary = i18n.dictionary({
     [Locale.Zh]: () => "等量的浓缩咖啡、蒸奶和厚厚的奶泡。",
   }),
 
-  latteName: i18n.template<object>({
+  latteName: i18n.template({
     [Locale.En]: () => "Latte",
     [Locale.Fr]: () => "Café Latte",
     [Locale.De]: () => "Latte",
@@ -147,7 +147,7 @@ export const dictionary = i18n.dictionary({
     [Locale.Ka]: () => "ლატე",
     [Locale.Zh]: () => "拿铁",
   }),
-  latteDescription: i18n.template<object>({
+  latteDescription: i18n.template({
     [Locale.En]: () =>
       "A generous pour of steamed milk over a single shot of espresso, topped with a thin layer of foam.",
     [Locale.Fr]: () =>
@@ -171,7 +171,7 @@ export const dictionary = i18n.dictionary({
     [Locale.Zh]: () => "在一份浓缩咖啡上倒入大量蒸奶，顶部覆盖一层薄薄的奶泡。",
   }),
 
-  mochaName: i18n.template<object>({
+  mochaName: i18n.template({
     [Locale.En]: () => "Mocha",
     [Locale.Fr]: () => "Mocha",
     [Locale.De]: () => "Mokka",
@@ -184,7 +184,7 @@ export const dictionary = i18n.dictionary({
     [Locale.Ka]: () => "მოკა",
     [Locale.Zh]: () => "摩卡",
   }),
-  mochaDescription: i18n.template<object>({
+  mochaDescription: i18n.template({
     [Locale.En]: () =>
       "A chocolatey twist on the latte — espresso, steamed milk, and a swirl of dark chocolate.",
     [Locale.Fr]: () =>
@@ -208,7 +208,7 @@ export const dictionary = i18n.dictionary({
     [Locale.Zh]: () => "拿铁的巧克力变体——浓缩咖啡、蒸奶和黑巧克力。",
   }),
 
-  americanoName: i18n.template<object>({
+  americanoName: i18n.template({
     [Locale.En]: () => "Americano",
     [Locale.Fr]: () => "Americano",
     [Locale.De]: () => "Americano",
@@ -221,7 +221,7 @@ export const dictionary = i18n.dictionary({
     [Locale.Ka]: () => "ამერიკანო",
     [Locale.Zh]: () => "美式咖啡",
   }),
-  americanoDescription: i18n.template<object>({
+  americanoDescription: i18n.template({
     [Locale.En]: () =>
       "An espresso lengthened with hot water for a smoother, drip-style cup.",
     [Locale.Fr]: () =>
@@ -245,7 +245,7 @@ export const dictionary = i18n.dictionary({
     [Locale.Zh]: () => "用热水稀释的浓缩咖啡，口感更柔和，类似滴滤咖啡。",
   }),
 
-  flatWhiteName: i18n.template<object>({
+  flatWhiteName: i18n.template({
     [Locale.En]: () => "Flat White",
     [Locale.Fr]: () => "Flat White",
     [Locale.De]: () => "Flat White",
@@ -258,7 +258,7 @@ export const dictionary = i18n.dictionary({
     [Locale.Ka]: () => "ფლეტ ვაიტი",
     [Locale.Zh]: () => "馥芮白",
   }),
-  flatWhiteDescription: i18n.template<object>({
+  flatWhiteDescription: i18n.template({
     [Locale.En]: () =>
       "A double espresso topped with velvety microfoam — bolder than a latte, smoother than a cappuccino.",
     [Locale.Fr]: () =>

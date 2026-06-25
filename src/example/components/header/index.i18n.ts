@@ -1,7 +1,7 @@
 import { Locale, i18n } from "../../utils";
 
 export const dictionary = i18n.dictionary({
-  appTitle: i18n.template<object>({
+  appTitle: i18n.template({
     [Locale.En]: () => "Reacti8n · Coffee Menu",
     [Locale.Fr]: () => "Reacti8n · Carte des Cafés",
     [Locale.De]: () => "Reacti8n · Kaffeekarte",
@@ -14,7 +14,7 @@ export const dictionary = i18n.dictionary({
     [Locale.Ka]: () => "Reacti8n · ყავის მენიუ",
     [Locale.Zh]: () => "Reacti8n · 咖啡菜单",
   }),
-  tagline: i18n.template<object>({
+  tagline: i18n.template({
     [Locale.En]: () =>
       "Tiny, type-safe i18n for React — demonstrated on caffeine.",
     [Locale.Fr]: () =>
@@ -36,7 +36,7 @@ export const dictionary = i18n.dictionary({
       "მცირე, ტიპურად უსაფრთხო i18n React-ისთვის — კოფეინზე ნაჩვენები.",
     [Locale.Zh]: () => "小巧、类型安全的 React i18n — 以咖啡为例。",
   }),
-  languageLabel: i18n.template<object>({
+  languageLabel: i18n.template({
     [Locale.En]: () => "Language",
     [Locale.Fr]: () => "Langue",
     [Locale.De]: () => "Sprache",

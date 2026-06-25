@@ -122,15 +122,20 @@ export class I18n<const L extends string, M extends Mode = Mode.Loose> {
    * Wraps a per-locale set of {@link Formatter}s into a {@link Template}
    * suitable for inclusion in `dictionary({ ... })`. The `Args` generic is
    * preserved at the call site so consumers get typed arguments when
-   * invoking the resolved message.
+   * invoking the resolved message. Defaults to `object` so token-less
+   * messages can be written as `i18n.template({ ... })` — the resolved
+   * callable still carries `.direction` / `.locale` metadata.
    *
    * @typeParam Args - Shape of the tokens object accepted by every variant.
+   * Defaults to `object`.
    * @param variants - Map from locale key to a formatter that turns
    * `{ tokens, helpers }` into a `ReactNode`.
    * @returns A {@link Template} that the dictionary will resolve into a
    * typed callable at lookup time.
    */
-  template<Args>(variants: Variants<L, Formatter<Args>, M>): Template<L, Args> {
+  template<Args = object>(
+    variants: Variants<L, Formatter<Args>, M>,
+  ): Template<L, Args> {
     return new Template<L, Args>(variants as Variants<L, Formatter<unknown>>);
   }
 
