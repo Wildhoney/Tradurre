@@ -106,9 +106,10 @@ function LanguageSwitcher() {
 
 ```ts
 const detected = i18n.detect([
+  user?.preferences.locale,
   cookies.get("locale"),
   request.headers["accept-language"],
-  user?.preferences.locale,
+  ...navigator.languages,
 ]);
 ```
 
