@@ -1,7 +1,4 @@
-export type PolyfillLoader = {
-  polyfill(): Promise<void>;
-  data(locale: string): Promise<void>;
-};
+import type { PolyfillLoader } from "../types.ts";
 
 const defaultLoader: PolyfillLoader = {
   async polyfill() {

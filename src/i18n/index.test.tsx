@@ -2,7 +2,8 @@ import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
-import { I18n } from "./i18n";
+import { I18n } from "./index.ts";
+import { Mode } from "../types.ts";
 
 const i18n = new I18n({ locales: ["en", "fr", "de"] as const });
 
@@ -36,11 +37,7 @@ const translations = i18n.dictionary({
 
 function wrap(locale?: "en" | "fr" | "de") {
   return function Wrapper({ children }: { children: ReactNode }) {
-    return (
-      <i18n.Provider locale={locale}>
-        {children}
-      </i18n.Provider>
-    );
+    return <i18n.Provider locale={locale}>{children}</i18n.Provider>;
   };
 }
 
@@ -125,5 +122,46 @@ describe("new I18n()", () => {
     expect(events).toEqual([
       { key: "auRevoir", requested: "en", resolved: "fr" },
     ]);
+  });
+});
+
+describe("new I18n() with Mode.Strict", () => {
+  const strict = new I18n<"en" | "fr", Mode.Strict>({
+    locales: ["en", "fr"] as const,
+  });
+
+  it("compiles when every locale defines a plain variant", () => {
+    const dict = strict.dictionary({
+      ok: { en: "OK", fr: "Accepter" },
+    });
+    expect(dict.resolve("en").ok).toBe("OK");
+  });
+
+  it("compiles when every locale defines a Template variant", () => {
+    const dict = strict.dictionary({
+      greet: strict.template<{ name: string }>({
+        en({ tokens }) {
+          return `Hello, ${tokens.name}`;
+        },
+        fr({ tokens }) {
+          return `Bonjour, ${tokens.name}`;
+        },
+      }),
+    });
+    expect(dict.resolve("en").greet({ name: "Imogen" })).toBe("Hello, Imogen");
+  });
+
+  it("rejects partial plain variants at the type level", () => {
+    // @ts-expect-error - fr locale is missing in strict mode
+    strict.dictionary({ partial: { en: "OK" } });
+  });
+
+  it("rejects partial Template variants at the type level", () => {
+    // @ts-expect-error - fr locale is missing in strict mode
+    strict.template<{ name: string }>({
+      en({ tokens }) {
+        return `Hello, ${tokens.name}`;
+      },
+    });
   });
 });

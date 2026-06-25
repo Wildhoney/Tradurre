@@ -1,18 +1,13 @@
-import { makeHelpers, type Helpers } from "./helpers";
-import { Template } from "./template";
-import type { Input, Merged } from "./types";
+import type { ReactNode } from "react";
 
-type Formatter = (payload: { tokens: unknown; helpers: Helpers }) => string;
+import { makeHelpers } from "../helpers/index.ts";
+import { Template } from "../template/index.ts";
+import { Mode } from "../types.ts";
+import type { FallbackHandler, Helpers, Input, Merged } from "../types.ts";
 
-export type FallbackEvent<L extends string> = {
-  key: string;
-  requested: L;
-  resolved: L | null;
-};
+type Formatter = (payload: { tokens: unknown; helpers: Helpers }) => ReactNode;
 
-export type FallbackHandler<L extends string> = (event: FallbackEvent<L>) => void;
-
-export class Dictionary<L extends string, D extends Input<L>> {
+export class Dictionary<L extends string, D extends Input<L, Mode>> {
   readonly #entries: D;
   readonly #locales: readonly L[];
   readonly #onFallback?: FallbackHandler<L>;
@@ -56,11 +51,7 @@ export class Dictionary<L extends string, D extends Input<L>> {
       return formatter;
     }
     if (isObject(entry)) {
-      return this.#fromVariants(
-        entry as Record<string, unknown>,
-        key,
-        locale,
-      );
+      return this.#fromVariants(entry as Record<string, unknown>, key, locale);
     }
     return entry;
   }
@@ -93,9 +84,7 @@ export function makeDictionary<L extends string>(
   locales: readonly L[],
   onFallback?: FallbackHandler<L>,
 ) {
-  return function dictionary<D extends Input<L>>(
-    entries: D,
-  ): Dictionary<L, D> {
+  return function dictionary<D extends Input<L>>(entries: D): Dictionary<L, D> {
     return new Dictionary<L, D>(locales, entries, onFallback);
   };
 }

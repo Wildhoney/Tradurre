@@ -6,10 +6,7 @@ import {
   type ReactNode,
 } from "react";
 
-export type LocaleHandle<L extends string> = {
-  locale: L;
-  setLocale(next: L): void;
-};
+import type { LocaleHandle } from "../types.ts";
 
 export function makeProvider<L extends string>(initialLocale: L) {
   const Context = createContext<LocaleHandle<L> | null>(null);

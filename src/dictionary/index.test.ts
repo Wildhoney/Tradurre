@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { Dictionary, makeDictionary, type FallbackEvent } from "./dictionary";
-import { makeTemplate } from "./template";
+import { Dictionary, makeDictionary } from "./index.ts";
+import { makeTemplate } from "../template/index.ts";
+import type { FallbackEvent } from "../types.ts";
 
 const locales = ["en", "fr"] as const;
 const dictionary = makeDictionary<"en" | "fr">(locales);
@@ -34,9 +35,7 @@ describe("Dictionary.resolve()", () => {
         },
       }),
     });
-    expect(dict.resolve("en").greet({ name: "Imogen" })).toBe(
-      "Hello, Imogen",
-    );
+    expect(dict.resolve("en").greet({ name: "Imogen" })).toBe("Hello, Imogen");
     expect(dict.resolve("fr").greet({ name: "Phoebe" })).toBe(
       "Bonjour, Phoebe",
     );
@@ -57,9 +56,7 @@ describe("Dictionary.resolve()", () => {
         },
       }),
     });
-    expect(dict.resolve("en").balance({ amount: 1234.5 })).toBe(
-      "$1,234.50",
-    );
+    expect(dict.resolve("en").balance({ amount: 1234.5 })).toBe("$1,234.50");
     expect(dict.resolve("fr").balance({ amount: 1234.5 })).toBe(
       new Intl.NumberFormat("fr", {
         style: "currency",
@@ -72,7 +69,9 @@ describe("Dictionary.resolve()", () => {
     const dict = dictionary({
       sentOn: template<{ when: Date }>({
         en({ tokens, helpers }) {
-          return helpers.dateTimeFormat({ dateStyle: "short" }).format(tokens.when);
+          return helpers
+            .dateTimeFormat({ dateStyle: "short" })
+            .format(tokens.when);
         },
       }),
     });

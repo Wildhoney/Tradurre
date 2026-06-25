@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     dts({
       include: ["src/**/*.ts", "src/**/*.tsx"],
-      exclude: ["src/**/*.test.ts", "src/**/*.test.tsx", "src/test-setup.ts"],
+      exclude: ["src/**/*.test.ts", "src/**/*.test.tsx", "src/tests/**"],
       rollupTypes: true,
     }),
   ],
@@ -37,7 +37,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "jsdom",
-    setupFiles: ["./src/test-setup.ts"],
+    setupFiles: ["./src/tests/index.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "lcov"],
@@ -45,11 +45,16 @@ export default defineConfig({
       exclude: [
         "src/**/*.test.ts",
         "src/**/*.test.tsx",
-        "src/test-setup.ts",
+        "src/tests/**",
         "src/index.ts",
-        "src/polyfill.ts",
+        "src/polyfill/index.ts",
       ],
-      thresholds: { lines: 100, functions: 100, branches: 100, statements: 100 },
+      thresholds: {
+        lines: 100,
+        functions: 100,
+        branches: 100,
+        statements: 100,
+      },
     },
   },
 });

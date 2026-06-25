@@ -19,6 +19,8 @@
     "forceConsistentCasingInFileNames": true,
     "useDefineForClassFields": true,
     "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
     "types": ["vitest/globals", "node"]
   },
   "include": ["src/**/*"]

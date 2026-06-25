@@ -7,5 +7,5 @@
     "noEmit": false
   },
   "include": ["src/**/*"],
-  "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/test-setup.ts"]
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "src/tests/**"]
 }

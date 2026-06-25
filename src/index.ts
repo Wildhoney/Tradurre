@@ -1,19 +1,21 @@
-export { I18n } from "./i18n";
-export type { I18nConfig, ResolvedDictionary } from "./i18n";
-
-export { Dictionary } from "./dictionary";
-export type { FallbackEvent, FallbackHandler } from "./dictionary";
-export { Template } from "./template";
-export type { Helpers } from "./helpers";
-export { installPluralRulesPolyfill } from "./polyfill";
-export type { PolyfillLoader } from "./polyfill";
-export type { LocaleHandle } from "./provider";
+export { I18n } from "./i18n/index.ts";
+export { Dictionary, makeDictionary } from "./dictionary/index.ts";
+export { Template, makeTemplate } from "./template/index.ts";
+export { installPluralRulesPolyfill } from "./polyfill/index.ts";
+export { Mode } from "./types.ts";
 export type {
   AtLeastOne,
   Entry,
+  FallbackEvent,
+  FallbackHandler,
   Formatter,
+  Helpers,
+  I18nConfig,
   Input,
+  LocaleHandle,
   Merged,
+  PolyfillLoader,
   Resolved,
+  ResolvedDictionary,
   Variants,
-} from "./types";
+} from "./types.ts";

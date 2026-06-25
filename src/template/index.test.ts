@@ -1,16 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { makeHelpers } from "./helpers";
-import { Template, makeTemplate } from "./template";
+import { Template, makeTemplate } from "./index.ts";
+import { makeHelpers } from "../helpers/index.ts";
 
 describe("Template", () => {
   it("stores the variants record on the instance", () => {
+    const template = makeTemplate<"en">();
     const variants = {
       en({ tokens }: { tokens: { name: string } }) {
         return `Hi, ${tokens.name}`;
       },
     };
-    const message = new Template<"en", { name: string }>(variants);
+    const message = template<{ name: string }>(variants);
+    expect(message).toBeInstanceOf(Template);
     expect(message.variants).toBe(variants);
   });
 });
@@ -28,7 +30,10 @@ describe("makeTemplate()", () => {
     });
     expect(message).toBeInstanceOf(Template);
     expect(
-      message.variants.en?.({ tokens: { name: "Imogen" }, helpers: makeHelpers("en") }),
+      message.variants.en?.({
+        tokens: { name: "Imogen" },
+        helpers: makeHelpers("en"),
+      }),
     ).toBe("Hello, Imogen");
   });
 

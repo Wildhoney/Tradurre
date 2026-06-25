@@ -1,8 +1,4 @@
-export type Helpers = {
-  numberFormat(options?: Intl.NumberFormatOptions): Intl.NumberFormat;
-  dateTimeFormat(options?: Intl.DateTimeFormatOptions): Intl.DateTimeFormat;
-  pluralRules(options?: Intl.PluralRulesOptions): Intl.PluralRules;
-};
+import type { Helpers } from "../types.ts";
 
 export function makeHelpers(locale: string): Helpers {
   return {

@@ -1,12 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { makeDetect } from "./detect";
+import { makeDetect } from "./index.ts";
 
 const locales = ["en", "fr", "de"] as const;
-const { detect, isLocale } = makeDetect<"en" | "fr" | "de">(
-  locales,
-  "en",
-);
+const { detect, isLocale } = makeDetect<"en" | "fr" | "de">(locales, "en");
 
 describe("detect()", () => {
   beforeEach(() => {

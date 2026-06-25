@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { installPluralRulesPolyfill } from "./polyfill";
+import { installPluralRulesPolyfill } from "./index.ts";
 
 describe("installPluralRulesPolyfill()", () => {
   it("invokes the loader's polyfill, then data for each locale when natives are missing", async () => {

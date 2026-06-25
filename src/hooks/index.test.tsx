@@ -1,9 +1,9 @@
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { makeDictionary } from "./dictionary";
-import { makeHooks } from "./hooks";
-import { makeTemplate } from "./template";
+import { makeHooks } from "./index.ts";
+import { makeDictionary } from "../dictionary/index.ts";
+import { makeTemplate } from "../template/index.ts";
 
 const locales = ["en", "fr"] as const;
 const dictionary = makeDictionary<"en" | "fr">(locales);

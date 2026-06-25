@@ -2,7 +2,7 @@ import { act, render, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
-import { makeProvider } from "./provider";
+import { makeProvider } from "./index.tsx";
 
 describe("Provider / useLocale()", () => {
   it("provides the controlled locale when `locale` prop is set", () => {
@@ -38,9 +38,7 @@ describe("Provider / useLocale()", () => {
     const { Provider, useLocale } = makeProvider<"en" | "fr">("en");
     const seen: string[] = [];
     const wrapper = ({ children }: { children: ReactNode }) => (
-      <Provider onLocaleChange={(next) => seen.push(next)}>
-        {children}
-      </Provider>
+      <Provider onLocaleChange={(next) => seen.push(next)}>{children}</Provider>
     );
     const { result } = renderHook(() => useLocale(), { wrapper });
     act(() => result.current.setLocale("fr"));

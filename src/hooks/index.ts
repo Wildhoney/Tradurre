@@ -1,5 +1,5 @@
-import type { Dictionary } from "./dictionary";
-import type { Input, Merged } from "./types";
+import type { Dictionary } from "../dictionary/index.ts";
+import type { Input, Merged } from "../types.ts";
 
 export function makeHooks<L extends string>(useLocale: () => { locale: L }) {
   function useI18n<D extends Input<L>>(
