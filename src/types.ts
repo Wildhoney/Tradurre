@@ -249,21 +249,46 @@ export type FallbackHandler<L extends string> = (
 ) => void;
 
 /**
- * Hooks called by the runtime to install the `Intl.PluralRules` polyfill from
- * `@formatjs/intl-pluralrules` when the host environment is missing native
- * support. Exposed primarily so tests can substitute their own loader.
+ * Hooks called by the runtime to install one of the `Intl` formatter
+ * polyfills from `@formatjs/*` when the host environment is missing native
+ * support. The library does not embed dynamic-import specifiers itself —
+ * consumers own the `import()` so each bundler's static-analysis rules are
+ * satisfied at the call site.
+ *
+ * @typeParam L - Locale union for the parent {@link I18n} instance.
+ * Narrowing `data(locale: L)` instead of `string` makes the consumer's
+ * `switch (locale)` exhaustive over every configured locale — important
+ * because Tradurre loads data for every locale in the fallback chain, not
+ * just the active one.
  */
-export type PolyfillLoader = {
+export type PolyfillLoader<L extends string> = {
   /**
-   * Load and install the polyfill itself (e.g.
+   * Load and install the polyfill engine itself (e.g.
    * `@formatjs/intl-pluralrules/polyfill.js`).
    */
   polyfill(): Promise<void>;
   /**
    * Load CLDR locale data for `locale` (e.g.
-   * `@formatjs/intl-pluralrules/locale-data/${locale}.js`).
+   * `@formatjs/intl-pluralrules/locale-data/${locale}.js`). Invoked once
+   * per locale in {@link I18nConfig.locales}.
    */
-  data(locale: string): Promise<void>;
+  data(locale: L): Promise<void>;
+};
+
+/**
+ * Per-formatter polyfill loaders. Each slot is independent: a present
+ * loader runs only when the matching native check fails, and an absent
+ * loader is silently skipped.
+ *
+ * @typeParam L - Locale union for the parent {@link I18n} instance.
+ */
+export type Polyfills<L extends string> = {
+  /** Loader for `Intl.PluralRules` (e.g. `@formatjs/intl-pluralrules`). */
+  pluralRules?: PolyfillLoader<L>;
+  /** Loader for `Intl.NumberFormat` (e.g. `@formatjs/intl-numberformat`). */
+  numberFormat?: PolyfillLoader<L>;
+  /** Loader for `Intl.DateTimeFormat` (e.g. `@formatjs/intl-datetimeformat`). */
+  dateTimeFormat?: PolyfillLoader<L>;
 };
 
 /**
@@ -277,6 +302,16 @@ export type I18nConfig<L extends string> = {
   locales: readonly L[];
   /** Optional callback fired when an entry falls back to another locale. */
   onFallback?: FallbackHandler<L>;
+  /**
+   * Optional per-formatter polyfills. Each slot — `pluralRules`,
+   * `numberFormat`, `dateTimeFormat` — accepts its own
+   * {@link PolyfillLoader}, invoked only when the matching native check
+   * fails for the configured locales. Omit any slot you don't need; omit
+   * the whole field on runtimes with native support (modern browsers,
+   * Hermes) to keep Metro/React Native from choking on a non-literal
+   * `import()` specifier the library would otherwise have to embed.
+   */
+  polyfills?: Polyfills<L>;
 };
 
 /**

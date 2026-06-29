@@ -35,6 +35,7 @@
 - [Strict mode](#strict-mode)
 - [Unit testing](#unit-testing)
 - [Fallback observability](#fallback-observability)
+- [Intl polyfills](#intl-polyfills)
 
 ## Benefits
 
@@ -49,11 +50,10 @@
 
 ## Getting started
 
-Install the package — plus the optional `@formatjs` packages if you need CLDR plural data on older runtimes:
+Install the package. The `@formatjs/intl-*` polyfills are only needed if you have to support a runtime that lacks native `Intl.PluralRules` / `Intl.NumberFormat` / `Intl.DateTimeFormat` for your locales — see [Intl polyfills](#intl-polyfills).
 
 ```sh
 pnpm add tradurre
-pnpm add @formatjs/intl-pluralrules @formatjs/intl-localematcher
 ```
 
 Configure once in your app entry. The class returns a typed instance scoped to your locale list — no module-level globals. The fallback chain is the order of `locales`: lookup walks left-to-right and stops at the first defined variant. The type system requires at least one locale per message, so a message that is undefined in every locale is a compile error.
@@ -489,3 +489,91 @@ new I18n({
 ```
 
 The callback is invoked synchronously inside `Dictionary.resolve()`, so keep it cheap — typically just a logger call.
+
+## Intl polyfills
+
+`Intl.PluralRules`, `Intl.NumberFormat`, and `Intl.DateTimeFormat` ship natively in every modern browser, in Node ≥13, and in Hermes — so most apps need nothing here. If you have to support a runtime that lacks native support for some of your locales (older embedded webviews, exotic CI runtimes), pass a `polyfills` map to `new I18n({ ... })`. Each slot is independent; the constructor installs the engine and CLDR data only when — and only for the specific formatter where — the native check fails.
+
+Loaders live in your code (not in Tradurre) on purpose. Bundlers handle dynamic-import specifiers differently — Vite and webpack tolerate template literals, Metro (React Native) rejects them at transform time — so the only sound contract is for the call site to decide. The `data` parameter is typed as your configured locale union, so a `switch (locale)` is exhaustive: Tradurre's fallback chain means any configured locale can end up rendering a message, so data must be loaded for **all** of them, not just the active one.
+
+For Vite or webpack — template literals are fine:
+
+```sh
+pnpm add @formatjs/intl-pluralrules @formatjs/intl-numberformat @formatjs/intl-datetimeformat
+```
+
+```ts
+new I18n({
+  locales: ["en", "ar", "en-GB"] as const,
+  polyfills: {
+    pluralRules: {
+      async polyfill() {
+        await import("@formatjs/intl-pluralrules/polyfill.js");
+      },
+      async data(locale) {
+        await import(
+          /* @vite-ignore */ `@formatjs/intl-pluralrules/locale-data/${locale}.js`
+        );
+      },
+    },
+    numberFormat: {
+      async polyfill() {
+        await import("@formatjs/intl-numberformat/polyfill.js");
+      },
+      async data(locale) {
+        await import(
+          /* @vite-ignore */ `@formatjs/intl-numberformat/locale-data/${locale}.js`
+        );
+      },
+    },
+    dateTimeFormat: {
+      async polyfill() {
+        await import("@formatjs/intl-datetimeformat/polyfill.js");
+      },
+      async data(locale) {
+        await import(
+          /* @vite-ignore */ `@formatjs/intl-datetimeformat/locale-data/${locale}.js`
+        );
+      },
+    },
+  },
+});
+```
+
+For React Native (Metro), omit `polyfills` entirely — Hermes exposes all three `Intl` formatters natively for the locales it ships with:
+
+```ts
+new I18n({
+  locales: ["en", "ar", "en-GB"] as const,
+});
+```
+
+If you do need data for a locale Hermes doesn't cover, supply loaders whose `data()` switches on `locale` to static specifiers. Tradurre walks the fallback chain through every configured locale, so the switch must cover all of them — TypeScript narrows `locale` to your `locales` union so missing cases are a compile error when the switch is exhaustive:
+
+```ts
+new I18n({
+  locales: ["en", "ar", "en-GB"] as const,
+  polyfills: {
+    pluralRules: {
+      async polyfill() {
+        await import("@formatjs/intl-pluralrules/polyfill.js");
+      },
+      async data(locale) {
+        switch (locale) {
+          case "en":
+            await import("@formatjs/intl-pluralrules/locale-data/en.js");
+            return;
+          case "ar":
+            await import("@formatjs/intl-pluralrules/locale-data/ar.js");
+            return;
+          case "en-GB":
+            await import("@formatjs/intl-pluralrules/locale-data/en-GB.js");
+            return;
+        }
+      },
+    },
+  },
+});
+```
+
+Loader rejections are swallowed inside the constructor — a failed polyfill never crashes app boot, but it does mean the affected formatter will fall through to whatever native support exists.

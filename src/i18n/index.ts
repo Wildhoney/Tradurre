@@ -3,7 +3,7 @@ import { createElement, type ReactElement, type ReactNode } from "react";
 import { makeDetect } from "../detect/index.ts";
 import { Dictionary } from "../dictionary/index.ts";
 import { makeHooks } from "../hooks/index.ts";
-import { installPluralRulesPolyfill } from "../polyfill/index.ts";
+import { installPolyfills } from "../polyfill/index.ts";
 import { makeProvider } from "../provider/index.tsx";
 import { Template } from "../template/index.ts";
 import type {
@@ -99,7 +99,7 @@ export class I18n<const L extends string, M extends Mode = Mode.Loose> {
     const detector = makeDetect<L>(config.locales, initial);
     this.detect = detector.detect;
     this.isLocale = detector.isLocale;
-    void installPluralRulesPolyfill(config.locales).catch(() => {});
+    void installPolyfills(config.locales, config.polyfills).catch(() => {});
   }
 
   /**
