@@ -121,6 +121,20 @@ describe("new I18n()", () => {
     // @ts-expect-error - fr and de locales missing
     i18n.constant({ en: "Sign in" });
   });
+
+  it("forces every variant site to cover a newly added locale", () => {
+    const wider = new I18n({ locales: ["en", "fr", "de", "es"] as const });
+
+    // @ts-expect-error - es locale missing after widening the union
+    wider.template<{ name: string }>({
+      en: ({ tokens }) => `Hello, ${tokens.name}`,
+      fr: ({ tokens }) => `Bonjour, ${tokens.name}`,
+      de: ({ tokens }) => `Hallo, ${tokens.name}`,
+    });
+
+    // @ts-expect-error - es locale missing after widening the union
+    wider.constant({ en: "Sign in", fr: "Se connecter", de: "Anmelden" });
+  });
 });
 
 describe("i18n.withI18n()", () => {
