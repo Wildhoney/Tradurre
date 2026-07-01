@@ -114,18 +114,17 @@ Every `useI18n(...)` result carries the active locale as an `Intl.Locale`, and t
 ```tsx
 export function App() {
   const intl = i18n.useI18n(translations);
-  const direction = intl.locale.getTextInfo().direction;
 
   useEffect(() => {
-    document.documentElement.dir = direction;
+    document.documentElement.dir = intl.locale.getTextInfo().direction;
     document.documentElement.lang = intl.locale.baseName;
-  }, [direction, intl.locale]);
+  }, [intl.locale]);
 
   return <YourApp />;
 }
 ```
 
-`direction` is `"ltr"` or `"rtl"` — pass it into `<html dir>`, CSS-in-JS, or any UI kit that accepts a `direction` prop (Ant Design, MUI, Chakra, etc.). Because every dictionary entry defines every configured locale, `intl.locale` is always the active locale, so `direction` is always correct for the copy you're rendering. Everything else on the standard `Intl.Locale` API — `region`, `script`, `numberingSystem`, `getWeekInfo()`, `getCalendars()`, `getHourCycles()` — is reachable the same way.
+`getTextInfo().direction` is `"ltr"` or `"rtl"` — pass it into `<html dir>`, CSS-in-JS, or any UI kit that accepts a `direction` prop (Ant Design, MUI, Chakra, etc.). Because every dictionary entry defines every configured locale, `intl.locale` is always the active locale, so the resolved direction is always correct for the copy you're rendering. Everything else on the standard `Intl.Locale` API — `region`, `script`, `numberingSystem`, `getWeekInfo()`, `getCalendars()`, `getHourCycles()` — is reachable the same way.
 
 ## Detection
 
