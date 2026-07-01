@@ -13,13 +13,16 @@ declare global {
     // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- module augmentation requires an interface
     interface Locale {
       /**
-       * Text direction information — `direction` is `"ltr"` or `"rtl"`.
-       * Optional: not every runtime ships the Intl Locale Info API (older
-       * Chrome / Safari); call sites should handle the `undefined` case.
+       * Returns text direction information for this locale — `direction` is
+       * `"ltr"` or `"rtl"`. Part of the stage-3 Intl Locale Info API; shipped
+       * in modern Chromium, Firefox, Safari, and Node.
        */
-      readonly textInfo?: { readonly direction: "ltr" | "rtl" };
-      /** Week-related info: first day, weekend days, minimum days in week one. */
-      readonly weekInfo?: {
+      getTextInfo(): { readonly direction: "ltr" | "rtl" };
+      /**
+       * Returns week-related info for this locale: first day, weekend days,
+       * minimum days in week one. Part of the stage-3 Intl Locale Info API.
+       */
+      getWeekInfo(): {
         readonly firstDay: number;
         readonly weekend: readonly number[];
         readonly minimalDays: number;
@@ -228,14 +231,10 @@ export type I18nConfig<L extends string> = {
 export type ResolvedDictionary<L extends string, D extends Input<L>> = {
   /** Fully resolved dictionary — each entry a typed callable. */
   copy: Merged<L, D>;
-  /** Active locale as an {@link Intl.Locale} instance. */
-  locale: Intl.Locale;
   /**
-   * Text direction for the active locale. Prefer this over
-   * `locale.textInfo?.direction` — the Intl Locale Info API is optional in
-   * older runtimes (Hermes, older WebViews) and returns `undefined` there;
-   * this field is computed against a known-RTL language set so it always
-   * resolves to `"ltr"` or `"rtl"`.
+   * Active locale as an {@link Intl.Locale} instance. Reach direction via
+   * `locale.getTextInfo().direction`, calendars via `locale.getCalendars()`,
+   * region via `locale.region`, etc.
    */
-  direction: "ltr" | "rtl";
+  locale: Intl.Locale;
 };

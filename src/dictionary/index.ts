@@ -49,14 +49,9 @@ export class Dictionary<L extends string, D extends Input<L>> {
         this.#pick(entry as Template<L, unknown>, locale, helpers),
       ]),
     ) as Merged<L, D>;
-    const intlLocale = new Intl.Locale(locale);
-    const direction =
-      intlLocale.textInfo?.direction ??
-      (RTL_LANGUAGES.has(intlLocale.language) ? "rtl" : "ltr");
     const bundle: ResolvedDictionary<L, D> = {
       copy,
-      locale: intlLocale,
-      direction,
+      locale: new Intl.Locale(locale),
     };
     this.#cache.set(locale, bundle);
     return bundle;
@@ -73,23 +68,6 @@ export class Dictionary<L extends string, D extends Input<L>> {
       (formatter as Formatter<unknown>)({ tokens, helpers });
   }
 }
-
-/**
- * Fallback RTL language set used by `resolve()` when the runtime's
- * `Intl.Locale.prototype.textInfo` getter isn't available — covers the
- * widely-deployed RTL scripts. Modern engines never hit this path; it's a
- * safety net for older Chrome / Safari and Hermes builds without the Intl
- * Locale Info API.
- */
-const RTL_LANGUAGES: ReadonlySet<string> = new Set([
-  "ar",
-  "fa",
-  "he",
-  "ps",
-  "sd",
-  "ur",
-  "yi",
-]);
 
 /**
  * Curried alternative to constructing {@link Dictionary} directly — captures

@@ -108,7 +108,7 @@ describe("Dictionary.resolve()", () => {
     expect(dict.resolve("en")).not.toBe(dict.resolve("fr"));
   });
 
-  it("exposes the active locale as an Intl.Locale instance and its direction", () => {
+  it("exposes the active locale as an Intl.Locale instance", () => {
     const arDictionary = makeDictionary<"en" | "ar">();
     const arTemplate = makeTemplate<"en" | "ar">();
     const dict = arDictionary({
@@ -125,42 +125,10 @@ describe("Dictionary.resolve()", () => {
     const en = dict.resolve("en");
     expect(en.locale).toBeInstanceOf(Intl.Locale);
     expect(en.locale.language).toBe("en");
-    expect(en.direction).toBe("ltr");
+    expect(en.locale.getTextInfo().direction).toBe("ltr");
 
     const ar = dict.resolve("ar");
     expect(ar.locale.language).toBe("ar");
-    expect(ar.direction).toBe("rtl");
-  });
-
-  it("falls back to a known-RTL language list when Intl.Locale.textInfo is unavailable", () => {
-    const original = Object.getOwnPropertyDescriptor(
-      Intl.Locale.prototype,
-      "textInfo",
-    );
-    Object.defineProperty(Intl.Locale.prototype, "textInfo", {
-      get: () => undefined,
-      configurable: true,
-    });
-
-    try {
-      const dict = makeDictionary<"en" | "ar">()({
-        greet: makeTemplate<"en" | "ar">()<{ name: string }>({
-          en({ tokens }) {
-            return `Hello, ${tokens.name}`;
-          },
-          ar({ tokens }) {
-            return `مرحباً، ${tokens.name}`;
-          },
-        }),
-      });
-      expect(dict.resolve("ar").direction).toBe("rtl");
-      expect(dict.resolve("en").direction).toBe("ltr");
-    } finally {
-      if (original !== undefined) {
-        Object.defineProperty(Intl.Locale.prototype, "textInfo", original);
-      } else {
-        delete (Intl.Locale.prototype as Record<string, unknown>).textInfo;
-      }
-    }
+    expect(ar.locale.getTextInfo().direction).toBe("rtl");
   });
 });

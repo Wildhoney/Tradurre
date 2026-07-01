@@ -10,16 +10,17 @@ import * as styles from "./styles";
 
 export function App() {
   const intl = i18n.useI18n(dictionary);
+  const direction = intl.locale.getTextInfo().direction;
 
   useEffect(() => {
-    document.documentElement.dir = intl.direction;
+    document.documentElement.dir = direction;
     document.documentElement.lang = intl.locale.baseName;
-  }, [intl.direction, intl.locale]);
+  }, [direction, intl.locale]);
 
   return (
     <ConfigProvider
       theme={{ algorithm: theme.defaultAlgorithm }}
-      direction={intl.direction}
+      direction={direction}
     >
       <Layout className={styles.container}>
         <Header />

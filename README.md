@@ -41,7 +41,7 @@
 - Message-first nesting — each message lives next to its translations.
 - Full coverage enforced — every dictionary entry must define every configured locale; partial coverage is a compile-time error.
 - Rich messages — formatters return `ReactNode`, so JSX (links, styled spans, icons) embeds inline without a wrapper component.
-- Locale metadata built in — `useI18n(...)` returns `{ copy, locale, direction }` where `locale` is a full `Intl.Locale` (region, script, week info, numbering system, …) and `direction` is an `"ltr" | "rtl"` shortcut safe on runtimes that don't ship the Intl Locale Info API.
+- Locale metadata built in — `useI18n(...)` returns `{ copy, locale }` where `locale` is a full `Intl.Locale`, so direction (`locale.getTextInfo().direction`), region, script, week info, numbering system, etc. are one call away.
 - No runtime DSL — drop the `intl-messageformat` parser entirely.
 
 ## Getting started
@@ -184,7 +184,7 @@ export function Welcome({ name }: WelcomeProps) {
 }
 ```
 
-`useI18n(...)` returns `{ copy, locale, direction }`. `copy` is the fully resolved dictionary — every entry a typed callable. Token-less messages (`intl.copy.ok()`) take no arguments; templated messages (`intl.copy.greet({ name })`) require their typed `tokens` object. `locale` is the active `Intl.Locale` and `direction` is its `"ltr" | "rtl"` shortcut (see [Active locale metadata](#active-locale-metadata)). `helpers` inside formatters are bound automatically based on the active locale.
+`useI18n(...)` returns `{ copy, locale }`. `copy` is the fully resolved dictionary — every entry a typed callable. Token-less messages (`intl.copy.ok()`) take no arguments; templated messages (`intl.copy.greet({ name })`) require their typed `tokens` object. `locale` is the active `Intl.Locale`; reach direction via `intl.locale.getTextInfo().direction` and every other locale-specific bit via the standard `Intl.Locale` API (see [Active locale metadata](#active-locale-metadata)). `helpers` inside formatters are bound automatically based on the active locale.
 
 ## Helpers
 
@@ -317,25 +317,26 @@ String returns inline as text, JSX returns render their tree. The arg type is in
 
 ## Active locale metadata
 
-`useI18n(...)` returns `{ copy, locale, direction }`. `locale` is a full `Intl.Locale` instance, so every locale-specific bit — week info, numbering system, calendar, hour cycle, language, region, script, … — is reachable via the standard browser API. `direction` is a `"ltr" | "rtl"` shortcut computed against the Intl Locale Info API where available, with a known-RTL language fallback for runtimes that don't ship `textInfo` yet (older WebViews, some Hermes builds):
+`useI18n(...)` returns `{ copy, locale }`. `locale` is a full `Intl.Locale` instance, so every locale-specific bit — text direction, week info, numbering system, calendar, hour cycle, language, region, script, … — is reachable via the standard browser API:
 
 ```tsx
 function Heading({ name }: { name: string }) {
   const intl = i18n.useI18n(translations);
+  const direction = intl.locale.getTextInfo().direction;
 
   return (
-    <article dir={intl.direction}>
+    <article dir={direction}>
       <h1>{intl.copy.greet({ name })}</h1>
       <p>script: {intl.locale.script ?? "—"}</p>
       <p>region: {intl.locale.region ?? "—"}</p>
       <p>numbering: {intl.locale.numberingSystem}</p>
-      <p>first day of week: {intl.locale.weekInfo?.firstDay ?? "—"}</p>
+      <p>first day of week: {intl.locale.getWeekInfo().firstDay}</p>
     </article>
   );
 }
 ```
 
-Because every dictionary entry defines every configured locale, there is never a divergence between "the locale you asked for" and "the locale that actually resolved" — `intl.locale` is always the active locale.
+`getTextInfo()` and `getWeekInfo()` come from the stage-3 Intl Locale Info API — modern Chromium, Firefox, Safari, and Node ship them. Because every dictionary entry defines every configured locale, there is never a divergence between "the locale you asked for" and "the locale that actually resolved" — `intl.locale` is always the active locale.
 
 ## Unit testing
 
