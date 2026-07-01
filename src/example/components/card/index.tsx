@@ -16,7 +16,7 @@ export function Card({ id }: Props) {
       title={
         <Space>
           <span className={styles.emoji}>{menu[id].emoji}</span>
-          <span>{intl.copy[`${id}Name`]()}</span>
+          <span>{intl.copy[`${id}Name`]}</span>
         </Space>
       }
       data-testid={`coffee-${id}`}
@@ -26,7 +26,7 @@ export function Card({ id }: Props) {
         className={styles.description}
         data-testid={`coffee-${id}-description`}
       >
-        {intl.copy[`${id}Description`]()}
+        {intl.copy[`${id}Description`]}
       </Typography.Paragraph>
 
       <Typography.Text

@@ -30,9 +30,9 @@ export async function installPolyfills<L extends string>(
 ): Promise<void> {
   if (!polyfills) return;
   await Promise.all([
-    install("PluralRules", locales, polyfills.pluralRules),
-    install("NumberFormat", locales, polyfills.numberFormat),
-    install("DateTimeFormat", locales, polyfills.dateTimeFormat),
+    install("PluralRules", locales, polyfills.plural),
+    install("NumberFormat", locales, polyfills.number),
+    install("DateTimeFormat", locales, polyfills.dateTime),
   ]);
 }
 

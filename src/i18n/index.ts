@@ -5,8 +5,14 @@ import { Dictionary } from "../dictionary/index.ts";
 import { makeHooks } from "../hooks/index.ts";
 import { installPolyfills } from "../polyfill/index.ts";
 import { makeProvider } from "../provider/index.tsx";
-import { Template } from "../template/index.ts";
-import type { Formatter, I18nConfig, Input, Variants } from "../types.ts";
+import { Constant, Template } from "../template/index.ts";
+import type {
+  ConstantVariant,
+  Formatter,
+  I18nConfig,
+  Input,
+  Variants,
+} from "../types.ts";
 
 /**
  * Locale-scoped i18n runtime. One {@link I18n} instance per application,
@@ -105,14 +111,28 @@ export class I18n<const L extends string> {
    * @typeParam Args - Shape of the tokens object accepted by every variant.
    * Defaults to `object`.
    * @param variants - Map from locale key to a formatter that turns
-   * `{ tokens, helpers }` into a `ReactNode`.
+   * `{ tokens, format }` into a `ReactNode`.
    * @returns A {@link Template} that the dictionary will resolve into a
    * typed callable at lookup time.
    */
-  template<Args = object>(
-    variants: Variants<L, Formatter<Args>>,
-  ): Template<L, Args> {
+  template<Args>(variants: Variants<L, Formatter<Args>>): Template<L, Args> {
     return new Template<L, Args>(variants as Variants<L, Formatter<unknown>>);
+  }
+
+  /**
+   * Wraps a per-locale set of no-argument variants into a {@link Constant}
+   * — resolved eagerly and read as a plain property on `intl.copy` (no call
+   * at the consumer site). Variants can be plain {@link ReactNode} values or
+   * `({ format }) => ReactNode` functions when the copy needs locale-bound
+   * `Intl` factories without tokens.
+   *
+   * @param variants - Map from locale key to a {@link ReactNode} value or a
+   * `({ format }) => ReactNode` function.
+   * @returns A {@link Constant} that the dictionary resolves into a
+   * {@link ReactNode} property at lookup time.
+   */
+  constant(variants: Variants<L, ConstantVariant>): Constant<L> {
+    return new Constant<L>(variants);
   }
 
   /**

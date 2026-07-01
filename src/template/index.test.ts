@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { Template, makeTemplate } from "./index.ts";
-import { makeHelpers } from "../helpers/index.ts";
+import { makeFormat } from "../format/index.ts";
 
 describe("Template", () => {
   it("stores the variants record on the instance", () => {
@@ -32,29 +32,29 @@ describe("makeTemplate()", () => {
     expect(
       message.variants.en?.({
         tokens: { name: "Imogen" },
-        helpers: makeHelpers("en"),
+        format: makeFormat("en"),
       }),
     ).toBe("Hello, Imogen");
   });
 
-  it("passes locale-bound helpers in the formatter payload", () => {
+  it("passes locale-bound format in the formatter payload", () => {
     const template = makeTemplate<"en" | "fr">();
     const message = template<{ amount: number }>({
-      en({ tokens, helpers }) {
-        return `Balance: ${helpers
-          .numberFormat({ style: "currency", currency: "USD" })
+      en({ tokens, format }) {
+        return `Balance: ${format
+          .number({ style: "currency", currency: "USD" })
           .format(tokens.amount)}`;
       },
-      fr({ tokens, helpers }) {
-        return `Solde : ${helpers
-          .numberFormat({ style: "currency", currency: "EUR" })
+      fr({ tokens, format }) {
+        return `Solde : ${format
+          .number({ style: "currency", currency: "EUR" })
           .format(tokens.amount)}`;
       },
     });
     expect(
       message.variants.en?.({
         tokens: { amount: 1234.5 },
-        helpers: makeHelpers("en"),
+        format: makeFormat("en"),
       }),
     ).toBe("Balance: $1,234.50");
   });

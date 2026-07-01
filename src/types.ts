@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import type { Template } from "./template/index.ts";
+import type { Constant, Template } from "./template/index.ts";
 
 /**
  * Augments {@link Intl.Locale} with the Locale Info API fields TypeScript's
@@ -36,19 +36,39 @@ declare global {
 }
 
 /**
- * Locale-bound `Intl` factories handed to every template formatter.
+ * Locale-bound `Intl` factories handed to every template formatter. Each
+ * method returns a fresh `Intl` instance configured for the active locale
+ * — call inline; the runtime handles per-locale memoisation.
  *
- * Each method returns a fresh `Intl` instance configured for the active
- * locale; the formatter calls these inline rather than receiving cached
- * instances, which keeps any locale-bound caching internal to the runtime.
+ * Covers every locale-scoped `Intl` type in the spec — from the widely-shipped
+ * `number` / `dateTime` / `plural` / `collator` / `displayNames` / `list` /
+ * `relativeTime` / `segmenter` to the stage-3 `duration` (Intl.DurationFormat).
  */
-export type Helpers = {
+export type Format = {
   /** Returns an `Intl.NumberFormat` for the active locale. */
-  numberFormat(options?: Intl.NumberFormatOptions): Intl.NumberFormat;
+  number(options?: Intl.NumberFormatOptions): Intl.NumberFormat;
   /** Returns an `Intl.DateTimeFormat` for the active locale. */
-  dateTimeFormat(options?: Intl.DateTimeFormatOptions): Intl.DateTimeFormat;
+  dateTime(options?: Intl.DateTimeFormatOptions): Intl.DateTimeFormat;
   /** Returns an `Intl.PluralRules` for the active locale. */
-  pluralRules(options?: Intl.PluralRulesOptions): Intl.PluralRules;
+  plural(options?: Intl.PluralRulesOptions): Intl.PluralRules;
+  /** Returns an `Intl.Collator` for the active locale. */
+  collator(options?: Intl.CollatorOptions): Intl.Collator;
+  /**
+   * Returns an `Intl.DisplayNames` for the active locale. The `type` option
+   * is required by the spec — pass `"language"`, `"region"`, `"script"`,
+   * `"currency"`, `"calendar"`, or `"dateTimeField"`.
+   */
+  displayNames(options: Intl.DisplayNamesOptions): Intl.DisplayNames;
+  /** Returns an `Intl.DurationFormat` for the active locale (stage-3). */
+  duration(options?: Intl.DurationFormatOptions): Intl.DurationFormat;
+  /** Returns an `Intl.ListFormat` for the active locale. */
+  list(options?: Intl.ListFormatOptions): Intl.ListFormat;
+  /** Returns an `Intl.RelativeTimeFormat` for the active locale. */
+  relativeTime(
+    options?: Intl.RelativeTimeFormatOptions,
+  ): Intl.RelativeTimeFormat;
+  /** Returns an `Intl.Segmenter` for the active locale. */
+  segmenter(options?: Intl.SegmenterOptions): Intl.Segmenter;
 };
 
 /**
@@ -57,16 +77,26 @@ export type Helpers = {
  * @typeParam Args - Shape of the tokens object passed when invoking the
  * message.
  */
-export type FormatterPayload<Args> = { tokens: Args; helpers: Helpers };
+export type FormatterPayload<Args> = { tokens: Args; format: Format };
 
 /**
- * A function that turns a typed `{ tokens, helpers }` payload into the
+ * A function that turns a typed `{ tokens, format }` payload into the
  * rendered output (a string or any `ReactNode`). Used inside {@link Variants}
  * when the dictionary entry is created via `i18n.template<Args>(...)`.
  *
  * @typeParam Args - Shape of the tokens this formatter expects.
  */
 export type Formatter<Args> = (payload: FormatterPayload<Args>) => ReactNode;
+
+/**
+ * Value accepted by each locale slot of `i18n.constant(...)`. Either a plain
+ * {@link ReactNode} (string, number, JSX, fragment, etc.) — resolved
+ * verbatim — or a `({ format }) => ReactNode` function for cases that need
+ * locale-bound `Intl` factories without accepting call-site tokens.
+ */
+export type ConstantVariant =
+  | ReactNode
+  | ((payload: { format: Format }) => ReactNode);
 
 /**
  * Map from locale key to variant value — every configured locale must define
@@ -79,39 +109,37 @@ export type Formatter<Args> = (payload: FormatterPayload<Args>) => ReactNode;
 export type Variants<L extends string, V> = Record<L, V>;
 
 /**
- * A single dictionary entry: a {@link Template} wrapper. Every message — even
- * a token-less constant string — must be wrapped in `i18n.template({ ... })`.
+ * A single dictionary entry: either a {@link Template} wrapper (arg-taking,
+ * consumed as `intl.copy.foo({ ... })`) or a {@link Constant} wrapper
+ * (token-less, consumed as `intl.copy.foo`).
  *
  * @typeParam L - Locale union for this i18n instance.
  */
-export type Entry<L extends string> = Template<L, unknown>;
+export type Entry<L extends string> = Template<L, unknown> | Constant<L>;
 
 /**
  * Shape of the object passed to `i18n.dictionary(...)`: a flat record of
- * message-id → {@link Template}.
+ * message-id → {@link Entry}.
  *
  * @typeParam L - Locale union for this i18n instance.
  */
 export type Input<L extends string> = Record<string, Entry<L>>;
 
 /**
- * Resolves a single dictionary entry into the callable consumers see under
- * `t.copy` from `useI18n(...)`.
- *
- * The callable's `args` parameter is optional when `Args` is satisfied by
- * `{}` — i.e. token-less templates (default `Args = object`) and templates
- * whose tokens are all optional. As soon as a template declares a required
- * token, the parameter becomes required at the call site.
+ * Resolves a single dictionary entry into the value consumers see on
+ * `intl.copy`. {@link Template} entries become typed callables
+ * (`(args) => ReactNode`); {@link Constant} entries become a plain
+ * {@link ReactNode} property.
  *
  * @typeParam L - Locale union for this i18n instance.
- * @typeParam E - Entry type to resolve (must be a {@link Template}).
+ * @typeParam E - Entry type to resolve.
  */
 export type Resolved<L extends string, E> =
   E extends Template<L, infer Args>
-    ? Record<string, never> extends Args
-      ? (args?: Args) => ReactNode
-      : (args: Args) => ReactNode
-    : never;
+    ? (args: Args) => ReactNode
+    : E extends Constant<L>
+      ? ReactNode
+      : never;
 
 /**
  * Resolves every entry of a dictionary input into its consumer-facing shape
@@ -190,11 +218,11 @@ export type PolyfillLoader<L extends string> = {
  */
 export type Polyfills<L extends string> = {
   /** Loader for `Intl.PluralRules` (e.g. `@formatjs/intl-pluralrules`). */
-  pluralRules?: PolyfillLoader<L>;
+  plural?: PolyfillLoader<L>;
   /** Loader for `Intl.NumberFormat` (e.g. `@formatjs/intl-numberformat`). */
-  numberFormat?: PolyfillLoader<L>;
+  number?: PolyfillLoader<L>;
   /** Loader for `Intl.DateTimeFormat` (e.g. `@formatjs/intl-datetimeformat`). */
-  dateTimeFormat?: PolyfillLoader<L>;
+  dateTime?: PolyfillLoader<L>;
 };
 
 /**
@@ -207,8 +235,8 @@ export type I18nConfig<L extends string> = {
   /** Ordered list of supported locales — the first entry is the initial locale. */
   locales: readonly L[];
   /**
-   * Optional per-formatter polyfills. Each slot — `pluralRules`,
-   * `numberFormat`, `dateTimeFormat` — accepts its own
+   * Optional per-formatter polyfills. Each slot — `plural`, `number`,
+   * `dateTime` — accepts its own
    * {@link PolyfillLoader}, invoked only when the matching native check
    * fails for the configured locales. Omit any slot you don't need; omit
    * the whole field on runtimes with native support (modern browsers,

@@ -6,19 +6,16 @@ describe("installPolyfills()", () => {
   it("invokes a slot's polyfill, then data for every configured locale", async () => {
     const calls: string[] = [];
     await installPolyfills(["xx-unsupported"], {
-      pluralRules: {
+      plural: {
         polyfill: vi.fn(async () => {
-          calls.push("pluralRules:polyfill");
+          calls.push("plural:polyfill");
         }),
         data: vi.fn(async (locale: string) => {
-          calls.push(`pluralRules:data:${locale}`);
+          calls.push(`plural:data:${locale}`);
         }),
       },
     });
-    expect(calls).toEqual([
-      "pluralRules:polyfill",
-      "pluralRules:data:xx-unsupported",
-    ]);
+    expect(calls).toEqual(["plural:polyfill", "plural:data:xx-unsupported"]);
   });
 
   it("runs each formatter's loader independently", async () => {
@@ -32,22 +29,22 @@ describe("installPolyfills()", () => {
       },
     });
     await installPolyfills(["xx-unsupported"], {
-      pluralRules: slot("pluralRules"),
-      numberFormat: slot("numberFormat"),
-      dateTimeFormat: slot("dateTimeFormat"),
+      plural: slot("plural"),
+      number: slot("number"),
+      dateTime: slot("dateTime"),
     });
-    expect(calls).toContain("pluralRules:polyfill");
-    expect(calls).toContain("numberFormat:polyfill");
-    expect(calls).toContain("dateTimeFormat:polyfill");
-    expect(calls).toContain("pluralRules:data:xx-unsupported");
-    expect(calls).toContain("numberFormat:data:xx-unsupported");
-    expect(calls).toContain("dateTimeFormat:data:xx-unsupported");
+    expect(calls).toContain("plural:polyfill");
+    expect(calls).toContain("number:polyfill");
+    expect(calls).toContain("dateTime:polyfill");
+    expect(calls).toContain("plural:data:xx-unsupported");
+    expect(calls).toContain("number:data:xx-unsupported");
+    expect(calls).toContain("dateTime:data:xx-unsupported");
   });
 
   it("loads data for every configured locale, not just the active one", async () => {
     const loaded: string[] = [];
     await installPolyfills(["xx-unsupported", "yy-unsupported"], {
-      pluralRules: {
+      plural: {
         polyfill: async () => {},
         data: async (locale: string) => {
           loaded.push(locale);
@@ -60,7 +57,7 @@ describe("installPolyfills()", () => {
   it("propagates errors from a loader", async () => {
     await expect(
       installPolyfills(["xx-unsupported"], {
-        pluralRules: {
+        plural: {
           polyfill: async () => {
             throw new Error("boom");
           },
@@ -73,7 +70,7 @@ describe("installPolyfills()", () => {
   it("is a no-op for a slot whose formatter is already natively supported", async () => {
     const calls: string[] = [];
     await installPolyfills(["en", "fr", "de"], {
-      pluralRules: {
+      plural: {
         polyfill: vi.fn(async () => {
           calls.push("polyfill");
         }),
@@ -92,13 +89,13 @@ describe("installPolyfills()", () => {
   it("is a no-op for an absent slot", async () => {
     const calls: string[] = [];
     await installPolyfills(["xx-unsupported"], {
-      pluralRules: {
+      plural: {
         polyfill: async () => {
-          calls.push("pluralRules:polyfill");
+          calls.push("plural:polyfill");
         },
         data: async () => {},
       },
     });
-    expect(calls).toEqual(["pluralRules:polyfill"]);
+    expect(calls).toEqual(["plural:polyfill"]);
   });
 });

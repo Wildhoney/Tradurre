@@ -18,25 +18,25 @@ const translations = i18n.dictionary({
       return `Hallo, ${tokens.name}`;
     },
   }),
-  ok: i18n.template({
-    en: () => "OK",
-    fr: () => "Accepter",
-    de: () => "OK",
+  signIn: i18n.constant({
+    en: "Sign in",
+    fr: "Se connecter",
+    de: "Anmelden",
   }),
   balance: i18n.template<{ amount: number }>({
-    en({ tokens, helpers }) {
-      return `Balance: ${helpers
-        .numberFormat({ style: "currency", currency: "USD" })
+    en({ tokens, format }) {
+      return `Balance: ${format
+        .number({ style: "currency", currency: "USD" })
         .format(tokens.amount)}`;
     },
-    fr({ tokens, helpers }) {
-      return `Solde : ${helpers
-        .numberFormat({ style: "currency", currency: "EUR" })
+    fr({ tokens, format }) {
+      return `Solde : ${format
+        .number({ style: "currency", currency: "EUR" })
         .format(tokens.amount)}`;
     },
-    de({ tokens, helpers }) {
-      return `Saldo: ${helpers
-        .numberFormat({ style: "currency", currency: "EUR" })
+    de({ tokens, format }) {
+      return `Saldo: ${format
+        .number({ style: "currency", currency: "EUR" })
         .format(tokens.amount)}`;
     },
   }),
@@ -57,11 +57,11 @@ describe("new I18n()", () => {
     expect(() => new I18n({ locales: [] })).toThrow(/at least one locale/i);
   });
 
-  it("resolves token-less Template entries via the hooks", () => {
+  it("resolves Constant entries via the hooks as properties", () => {
     const { result } = renderHook(() => i18n.useI18n(translations), {
       wrapper: wrap("fr"),
     });
-    expect(result.current.copy.ok()).toBe("Accepter");
+    expect(result.current.copy.signIn).toBe("Se connecter");
   });
 
   it("resolves Template entries with args", () => {
@@ -71,7 +71,7 @@ describe("new I18n()", () => {
     expect(result.current.copy.greet({ name: "Imogen" })).toBe("Hallo, Imogen");
   });
 
-  it("passes locale-bound helpers to Template formatters", () => {
+  it("passes locale-bound format to Template formatters", () => {
     const { result } = renderHook(() => i18n.useI18n(translations), {
       wrapper: wrap("en"),
     });
@@ -96,9 +96,9 @@ describe("new I18n()", () => {
       }),
       { wrapper: wrap() },
     );
-    expect(result.current.intl.copy.ok()).toBe("OK");
+    expect(result.current.intl.copy.signIn).toBe("Sign in");
     act(() => result.current.handle.setLocale("fr"));
-    expect(result.current.intl.copy.ok()).toBe("Accepter");
+    expect(result.current.intl.copy.signIn).toBe("Se connecter");
   });
 
   it("matches the detected locale against the supported set", () => {
@@ -115,6 +115,11 @@ describe("new I18n()", () => {
         return `Hello, ${tokens.name}`;
       },
     });
+  });
+
+  it("rejects partial Constant variants at the type level", () => {
+    // @ts-expect-error - fr and de locales missing
+    i18n.constant({ en: "Sign in" });
   });
 });
 

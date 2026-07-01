@@ -1,4 +1,4 @@
-import type { Formatter, Variants } from "../types.ts";
+import type { ConstantVariant, Formatter, Variants } from "../types.ts";
 
 /**
  * Type-only wrapper that pairs a per-locale set of {@link Formatter}s with
@@ -30,23 +30,50 @@ export class Template<L extends string, Args> {
 }
 
 /**
+ * Type-only wrapper for a per-locale set of no-argument variants. Built via
+ * `i18n.constant(...)` and embedded as a value in a {@link Dictionary} input.
+ * Consumers reach the resolved value as a plain property on `intl.copy` — no
+ * call needed.
+ *
+ * Variants can be plain {@link ReactNode} values, or `({ format }) =>
+ * ReactNode` functions when the copy needs locale-bound `Intl` factories.
+ *
+ * @typeParam L - Locale union for this i18n instance.
+ */
+export class Constant<L extends string> {
+  constructor(public readonly variants: Variants<L, ConstantVariant>) {}
+}
+
+/**
  * Curried alternative to `i18n.template<Args>(...)` — captures the locale
  * union, returns a `template(variants)` function. Useful when defining
  * templates outside the {@link I18n} instance scope (e.g. helper modules).
- *
- * `Args` defaults to `object`, so token-less templates omit the generic and
- * are callable as `t.copy.foo()` (no `{}` placeholder). Supplying `Args`
- * with at least one required key flips the resolved callable's parameter
- * from optional to required — see {@link Resolved}.
  *
  * @typeParam L - Locale union for this i18n instance.
  * @returns A `template<Args>(variants)` function that builds a typed
  * {@link Template}.
  */
 export function makeTemplate<L extends string>() {
-  return function template<Args = object>(
+  return function template<Args>(
     variants: Variants<L, Formatter<Args>>,
   ): Template<L, Args> {
     return new Template<L, Args>(variants as Variants<L, Formatter<unknown>>);
+  };
+}
+
+/**
+ * Curried alternative to `i18n.constant(...)` — captures the locale union,
+ * returns a `constant(variants)` function. Useful when defining messages
+ * outside the {@link I18n} instance scope.
+ *
+ * @typeParam L - Locale union for this i18n instance.
+ * @returns A `constant(variants)` function that builds a typed
+ * {@link Constant}.
+ */
+export function makeConstant<L extends string>() {
+  return function constant(
+    variants: Variants<L, ConstantVariant>,
+  ): Constant<L> {
+    return new Constant<L>(variants);
   };
 }
