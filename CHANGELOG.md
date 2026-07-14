@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.5.0](https://github.com/Wildhoney/Tradurre/compare/v0.3.0...v0.5.0) (2026-07-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* format namespace w/ full Intl surface + split constant/template APIs
+* drop `direction` field from useI18n bundle; use `locale.getTextInfo().direction`
+* require every locale on every entry; drop Mode/onFallback; return { copy, locale, direction } from useI18n
+
+* drop `direction` field from useI18n bundle; use `locale.getTextInfo().direction` ([8399f14](https://github.com/Wildhoney/Tradurre/commit/8399f149c3ced31b9a690b267d05e2549efa4bf9))
+* require every locale on every entry; drop Mode/onFallback; return { copy, locale, direction } from useI18n ([fbeddff](https://github.com/Wildhoney/Tradurre/commit/fbeddffc69cf1c5b0f06d322a6bf3c259b6858bd))
+
+
+### Features
+
+* format namespace w/ full Intl surface + split constant/template APIs ([a974a89](https://github.com/Wildhoney/Tradurre/commit/a974a8933e67adf035680d4f691d637de24ed3fc))
+* **provider:** add setLocales and Accept-Language serialisation ([1775887](https://github.com/Wildhoney/Tradurre/commit/17758872f0a927eb512dbb4310c9f87a0ea975ff))
+* **template:** default message output to string, widen to ReactNode on demand ([9ca0238](https://github.com/Wildhoney/Tradurre/commit/9ca023848975360101388d187dc49b1cf81739d8))
+
 ## [0.4.0](https://github.com/Wildhoney/Tradurre/compare/v0.3.0...v0.4.0) (2026-07-01)
 
 
