@@ -23,7 +23,7 @@
 - [Benefits](#benefits)
 - [Getting started](#getting-started)
 - [Preferred languages](#preferred-languages)
-- [RTL / LTR](#rtl--ltr)
+- [Text direction](#text-direction)
 - [Locale detection](#locale-detection)
 - [Writing messages](#writing-messages)
 - [Usage](#usage)
@@ -108,35 +108,39 @@ function LanguageSwitcher() {
 
 `useLocale()` returns the active `locale` **and** the ordered preference list behind it. `setLocale(next)` sets a single language; `setLocales(next)` sets a ranked list where the first entry is the favourite (and becomes the active locale). The two never diverge — `locale` is always `locales[0]`.
 
+The handle also carries `acceptLanguage()`, which serialises the current preference list into a standard `Accept-Language` header — hand it straight to `fetch` / `axios` to echo the user's language ranking back to your APIs. `next` is typed against your own `Locale` union (the one you configured `I18n` with), so the picker stays exhaustive.
+
 ```tsx
 function LanguagePreferences() {
-  const { locale, locales, setLocales } = i18n.useLocale();
+  const { locale, locales, setLocales, acceptLanguage } = i18n.useLocale();
 
   // Promote `next` to favourite, keeping the rest as ordered fallbacks.
-  function prefer(next: (typeof locales)[number]) {
+  function prefer(next: Locale) {
     setLocales([next, ...locales.filter((l) => l !== next)]);
   }
 
-  return <MyRankedPicker value={locales} active={locale} onPrefer={prefer} />;
+  async function save() {
+    await fetch("/api/preferences", {
+      method: "POST",
+      headers: { "Accept-Language": acceptLanguage() },
+    });
+    // locales = [Locale.Fr, Locale.En, Locale.De] → "fr, en;q=0.667, de;q=0.333"
+  }
+
+  return (
+    <MyRankedPicker
+      value={locales}
+      active={locale}
+      onPrefer={prefer}
+      onSave={save}
+    />
+  );
 }
 ```
 
-Send that preference order to your APIs as a standard `Accept-Language` header with `acceptLanguage(...)` — the one standalone export besides `I18n`. It is pure and framework-agnostic, so it works just as well inside a `fetch` / `axios` interceptor as it does in a component:
+The favourite is emitted bare (implicit `q=1`); each fallback gets a strictly-decreasing quality weight. Blank entries are dropped and duplicates collapse, so the header is always valid. Because `acceptLanguage()` reads the live list, `setLocale` / `setLocales` keep it in sync automatically. Going the other way, a server can hydrate the provider from a request's own `Accept-Language` via the controlled `locales` prop on `<i18n.Provider>`.
 
-```ts
-import { acceptLanguage } from "tradurre";
-
-const { locales } = i18n.useLocale();
-
-await fetch("/api/report", {
-  headers: { "Accept-Language": acceptLanguage(locales) },
-});
-// locales = ["fr", "en", "de"] → "Accept-Language: fr, en;q=0.667, de;q=0.333"
-```
-
-The favourite is emitted bare (implicit `q=1`); each fallback gets a strictly-decreasing quality weight. Blank entries are dropped and duplicates collapse, so the header is always valid. Feed it a list parsed the other direction too — a server can hydrate the provider from the request's own `Accept-Language` via the controlled `locales` prop on `<i18n.Provider>`.
-
-## RTL / LTR
+## Text direction
 
 Every `useI18n(...)` result carries the active locale as an `Intl.Locale`, and text direction comes from the standard `getTextInfo()` method. Wire it into your root element once and every RTL-aware layout falls out for free — Arabic, Hebrew, Persian, Urdu all flip, and every other locale stays LTR:
 

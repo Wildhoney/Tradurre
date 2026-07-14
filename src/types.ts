@@ -155,13 +155,13 @@ export type Merged<L extends string, D extends Input<L>> = {
 
 /**
  * Handle returned by `i18n.useLocale()` — the active locale, the ordered
- * preference list behind it, and the setters that change either.
+ * preference list behind it, the setters that change either, and a helper
+ * that serialises the list for your APIs.
  *
  * `locale` is always the head of `locales`; the two never diverge. Use
  * `setLocale` when a single choice is all you have and `setLocales` when you
  * have a ranked list (a user's language preferences, `navigator.languages`,
- * a parsed `Accept-Language`). Feed `locales` to {@link acceptLanguage} to
- * echo the preference order back to your APIs.
+ * a parsed `Accept-Language`).
  *
  * @typeParam L - Locale union for this i18n instance.
  */
@@ -183,6 +183,15 @@ export type LocaleHandle<L extends string> = {
    * locale. An empty list is ignored — the active locale can never be empty.
    */
   setLocales(next: readonly L[]): void;
+  /**
+   * Serialises the current {@link LocaleHandle.locales} into an HTTP
+   * `Accept-Language` header value — hand it straight to `fetch` / `axios`
+   * to echo the user's preference order back to your APIs. Reflects whichever
+   * setter last ran, so `setLocale`/`setLocales` keep it in sync.
+   *
+   * @returns The header value (e.g. `"fr, en;q=0.667, de;q=0.333"`).
+   */
+  acceptLanguage(): string;
 };
 
 /**

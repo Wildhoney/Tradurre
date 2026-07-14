@@ -132,6 +132,27 @@ describe("Provider / useLocale()", () => {
     expect(seen).toEqual([["fr"]]);
   });
 
+  it("serialises the preference list to an Accept-Language header", () => {
+    const { Provider, useLocale } = makeProvider<"en" | "fr" | "de">("en");
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <Provider>{children}</Provider>
+    );
+    const { result } = renderHook(() => useLocale(), { wrapper });
+    act(() => result.current.setLocales(["fr", "en", "de"]));
+    expect(result.current.acceptLanguage()).toBe("fr, en;q=0.667, de;q=0.333");
+  });
+
+  it("keeps acceptLanguage() in sync when setLocale collapses the list", () => {
+    const { Provider, useLocale } = makeProvider<"en" | "fr" | "de">("en");
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <Provider>{children}</Provider>
+    );
+    const { result } = renderHook(() => useLocale(), { wrapper });
+    act(() => result.current.setLocales(["fr", "en", "de"]));
+    act(() => result.current.setLocale("de"));
+    expect(result.current.acceptLanguage()).toBe("de");
+  });
+
   it("throws when useLocale is called outside the provider", () => {
     const { useLocale } = makeProvider<"en" | "fr">("en");
     function Probe() {

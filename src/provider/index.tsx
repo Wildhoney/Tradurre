@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useState } from "react";
 
+import { acceptLanguage as toAcceptLanguage } from "../accept-language/index.ts";
 import type { LocaleHandle, ProviderProps } from "../types.ts";
 
 /**
@@ -58,6 +59,9 @@ export function makeProvider<L extends string>(initialLocale: L) {
           setInternal(next);
           onLocaleChange?.(first);
           onLocalesChange?.(next);
+        },
+        acceptLanguage() {
+          return toAcceptLanguage(active);
         },
       };
     }, [active, onLocaleChange, onLocalesChange]);
