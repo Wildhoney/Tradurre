@@ -23,8 +23,10 @@ describe("acceptLanguage()", () => {
       .split(", ")
       .slice(1)
       .map((part) => Number(part.split(";q=")[1]));
-    expect(qualities.every((q) => q > 0 && q < 1)).toBe(true);
-    expect(qualities).toEqual([...qualities].sort((a, b) => b - a));
+    expect(qualities.every((quality) => quality > 0 && quality < 1)).toBe(true);
+    expect(qualities).toEqual(
+      [...qualities].sort((higher, lower) => lower - higher),
+    );
   });
 
   it("preserves region subtags verbatim", () => {

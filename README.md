@@ -108,15 +108,18 @@ function LanguageSwitcher() {
 
 `useLocale()` returns the active `locale` **and** the ordered preference list behind it. `setLocale(next)` sets a single language; `setLocales(next)` sets a ranked list where the first entry is the favourite (and becomes the active locale). The two never diverge — `locale` is always `locales[0]`.
 
-The handle also carries `acceptLanguage()`, which serialises the current preference list into a standard `Accept-Language` header — hand it straight to `fetch` / `axios` to echo the user's language ranking back to your APIs. `next` is typed against your own `Locale` union (the one you configured `I18n` with), so the picker stays exhaustive.
+The handle also carries `acceptLanguage()`, which serialises the current preference list into a standard `Accept-Language` header — hand it straight to `fetch` / `axios` to echo the user's language ranking back to your APIs. `favourite` is typed against your own `Locale` union (the one you configured `I18n` with), so the picker stays exhaustive.
 
 ```tsx
 function LanguagePreferences() {
   const { locale, locales, setLocales, acceptLanguage } = i18n.useLocale();
 
-  // Promote `next` to favourite, keeping the rest as ordered fallbacks.
-  function prefer(next: Locale) {
-    setLocales([next, ...locales.filter((l) => l !== next)]);
+  // Move the chosen locale to the front, keeping the rest as ordered fallbacks.
+  function prefer(favourite: Locale) {
+    setLocales([
+      favourite,
+      ...locales.filter((existing) => existing !== favourite),
+    ]);
   }
 
   async function save() {
