@@ -226,9 +226,15 @@ export const signIn = i18n.constant({
 });
 
 export const greet = i18n.template<Tokens.Greet>({
-  [Locale.En]({ tokens }) { return `Hello, ${tokens.name}`; },
-  [Locale.Fr]({ tokens }) { return `Bonjour, ${tokens.name}`; },
-  [Locale.De]({ tokens }) { return `Hallo, ${tokens.name}`; },
+  [Locale.En]({ tokens }) {
+    return `Hello, ${tokens.name}`;
+  },
+  [Locale.Fr]({ tokens }) {
+    return `Bonjour, ${tokens.name}`;
+  },
+  [Locale.De]({ tokens }) {
+    return `Hallo, ${tokens.name}`;
+  },
 });
 
 export const translations = i18n.dictionary({ signIn, greet });
