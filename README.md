@@ -36,7 +36,7 @@
 - Type-safe arguments — `template<{ name: string }>({...})` enforces the argument shape across every locale.
 - Message-first nesting — each message lives next to its translations.
 - Full coverage enforced — every dictionary entry must define every configured locale; partial coverage is a compile-time error.
-- Rich messages — formatters return `ReactNode`, so JSX (links, styled spans, icons) embeds inline without a wrapper component.
+- String-first, JSX-ready — messages resolve to `string` by default, so they drop straight into `alt` / `title` / `aria-label`; widen the output to `ReactNode` with one type parameter when a message embeds JSX (links, styled spans, icons) — no wrapper component.
 - RTL / LTR ready — every resolved bundle carries a full `Intl.Locale`, so `intl.locale.getTextInfo().direction` gives you `"ltr"` or `"rtl"` for the active locale directly.
 - No runtime DSL — drop the `intl-messageformat` parser entirely.
 
@@ -186,7 +186,7 @@ Two entry kinds:
 - **`i18n.constant({...})`** — token-less. Consumed as a plain property: `intl.copy.signIn`.
 - **`i18n.template<Args>({...})`** — takes typed tokens. Consumed as a call: `intl.copy.greet({ name })`.
 
-Template formatters receive a single `{ tokens, format }` payload — `tokens` is the typed args object you pass at the call site; `format` is locale-bound and exposes every `Intl` factory (`number`, `dateTime`, `plural`, `list`, `relativeTime`, `displayNames`, `duration`, `collator`, `segmenter`). Constant variants are plain `ReactNode` values by default, or `({ format }) => ReactNode` when they need `format` access without tokens. See the [Format factories recipe](./recipes/format.md) for a worked example of each.
+Template formatters receive a single `{ tokens, format }` payload — `tokens` is the typed args object you pass at the call site; `format` is locale-bound and exposes every `Intl` factory (`number`, `dateTime`, `plural`, `list`, `relativeTime`, `displayNames`, `duration`, `collator`, `segmenter`). Both kinds produce a `string` by default (widen to `ReactNode` via the type parameter — `i18n.constant<ReactNode>(...)` / `i18n.template<Args, ReactNode>(...)` — for JSX); constant variants can also be `({ format }) => …` when they need `format` access without tokens. See the [Format factories recipe](./recipes/format.md) for a worked example of each.
 
 ```ts
 import { i18n } from "./i18n";
@@ -262,19 +262,57 @@ export function Welcome({ name }: WelcomeProps) {
 }
 ```
 
-`useI18n(...)` returns `{ copy, locale }`. `copy` is the fully resolved dictionary — constants land as plain `ReactNode` properties (`intl.copy.signIn`); templates land as typed callables (`intl.copy.greet({ name })`). `locale` is the active `Intl.Locale`; reach direction via `intl.locale.getTextInfo().direction` and every other locale-specific bit via the standard `Intl.Locale` API. `format` inside formatters is bound automatically to the active locale.
+`useI18n(...)` returns `{ copy, locale }`. `copy` is the fully resolved dictionary — constants land as plain `string` properties (`intl.copy.signIn`); templates land as typed callables (`intl.copy.greet({ name })`, returning `string`). Both default to `string` and widen to `ReactNode` on demand — see [Components](#components). `locale` is the active `Intl.Locale`; reach direction via `intl.locale.getTextInfo().direction` and every other locale-specific bit via the standard `Intl.Locale` API. `format` inside formatters is bound automatically to the active locale.
 
 ## Components
 
-Template formatters return `ReactNode`, so you can return JSX directly — wrap a count in a styled element, drop a `<Link>` inline, whatever. There is no dedicated `<Trans>` component because there is nothing to wrap: a message _is_ a `(args) => ReactNode` function, so you call it in JSX:
+### Strings for attributes
+
+Messages resolve to a `string` by default, so a message drops straight into a plain-string attribute — `alt`, `title`, `placeholder`, `aria-label` — as readily as it does into element children. No cast, no coercion:
 
 ```tsx
+export const translations = i18n.dictionary({
+  logoAlt: i18n.constant({
+    [Locale.En]: "Company logo",
+    [Locale.Fr]: "Logo de l'entreprise",
+    [Locale.De]: "Firmenlogo",
+  }),
+  removeLabel: i18n.template<{ name: string }>({
+    [Locale.En]: ({ tokens }) => `Remove ${tokens.name}`,
+    [Locale.Fr]: ({ tokens }) => `Retirer ${tokens.name}`,
+    [Locale.De]: ({ tokens }) => `${tokens.name} entfernen`,
+  }),
+});
+
+function Logo({ name }: { name: string }) {
+  const intl = i18n.useI18n(translations);
+  return (
+    <img
+      src="/logo.png"
+      alt={intl.copy.logoAlt} // string — assigns straight in
+      aria-label={intl.copy.removeLabel({ name })} // (args) => string
+    />
+  );
+}
+```
+
+A token-less string message can also be written `i18n.template<void, string>(...)` — `void` tokens resolve to a no-argument callable (`intl.copy.close()`).
+
+Because the default output is `string`, returning JSX from a message is a **compile error** — a React element (or a stringified `[object Object]`) can never leak into an attribute that only accepts text. The output type never widens by inference either: it stays `string` until _you_ write `ReactNode`, so the attribute-safe default is never silently lost.
+
+### Rich messages
+
+When a message genuinely renders JSX — a styled span, an inline `<Link>`, an icon — widen the output type to `ReactNode` with the second type parameter: `i18n.template<Args, ReactNode>(...)`, or `i18n.constant<ReactNode>(...)` for a token-less one. There is no dedicated `<Trans>` component because there is nothing to wrap: a widened message _is_ a `(args) => ReactNode` function, so you call it in JSX:
+
+```tsx
+import type { ReactNode } from "react";
+
 namespace Tokens {
   type Articles = { count: number };
 }
 
 export const translations = i18n.dictionary({
-  articles: i18n.template<Tokens.Articles>({
+  articles: i18n.template<Tokens.Articles, ReactNode>({
     [Locale.En]({ tokens, format }) {
       const category = format.plural().select(tokens.count);
       return category === "one" ? (
@@ -304,7 +342,7 @@ function ArticleCount({ count }: ArticleCountProps) {
 }
 ```
 
-String returns inline as text, JSX returns render their tree. The arg type is inferred from the message, so passing the wrong shape is a compile error.
+A widened message can still return a bare string from any variant (`string` is a `ReactNode`), so mixing plain text and JSX across locales is fine. The arg type is inferred from the message, so passing the wrong shape is a compile error.
 
 ## Testing
 

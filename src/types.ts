@@ -81,22 +81,34 @@ export type FormatterPayload<Args> = { tokens: Args; format: Format };
 
 /**
  * A function that turns a typed `{ tokens, format }` payload into the
- * rendered output (a string or any `ReactNode`). Used inside {@link Variants}
- * when the dictionary entry is created via `i18n.template<Args>(...)`.
+ * rendered output. `Out` defaults to `string` — the common case, and exactly
+ * what plain-string attributes (`alt`, `title`, `aria-label`, `placeholder`)
+ * require. Widen it to {@link ReactNode} via `i18n.template<Args, ReactNode>(...)`
+ * for messages that embed JSX. Used inside {@link Variants} when the dictionary
+ * entry is created via `i18n.template<Args, Out>(...)`.
  *
  * @typeParam Args - Shape of the tokens this formatter expects.
+ * @typeParam Out - Rendered output type. Defaults to `string`; widen to
+ * {@link ReactNode} for messages that return JSX.
  */
-export type Formatter<Args> = (payload: FormatterPayload<Args>) => ReactNode;
+export type Formatter<Args, Out = string> = (
+  payload: FormatterPayload<Args>,
+) => Out;
 
 /**
  * Value accepted by each locale slot of `i18n.constant(...)`. Either a plain
- * {@link ReactNode} (string, number, JSX, fragment, etc.) — resolved
- * verbatim — or a `({ format }) => ReactNode` function for cases that need
- * locale-bound `Intl` factories without accepting call-site tokens.
+ * value of the output type `Out` — resolved verbatim — or a
+ * `({ format }) => Out` function for cases that need locale-bound `Intl`
+ * factories without accepting call-site tokens. `Out` defaults to `string`;
+ * widen it to {@link ReactNode} via `i18n.constant<ReactNode>(...)` for
+ * constants that hold JSX.
+ *
+ * @typeParam Out - Value each variant produces. Defaults to `string`; widen to
+ * {@link ReactNode} for JSX-bearing constants.
  */
-export type ConstantVariant =
-  | ReactNode
-  | ((payload: { format: Format }) => ReactNode);
+export type ConstantVariant<Out = string> =
+  | Out
+  | ((payload: { format: Format }) => Out);
 
 /**
  * Map from locale key to variant value — every configured locale must define
@@ -109,13 +121,24 @@ export type ConstantVariant =
 export type Variants<L extends string, V> = Record<L, V>;
 
 /**
- * A single dictionary entry: either a {@link Template} wrapper (arg-taking,
- * consumed as `intl.copy.foo({ ... })`) or a {@link Constant} wrapper
- * (token-less, consumed as `intl.copy.foo`).
+ * Constraint used by {@link Input} to accept a dictionary entry — either a
+ * {@link Template} wrapper (arg-taking, consumed as `intl.copy.foo({ ... })`)
+ * or a {@link Constant} wrapper (token-less, consumed as `intl.copy.foo`).
+ *
+ * Deliberately matches only the `__locale` phantom rather than the full
+ * `Template | Constant` union. That union would place each entry's output
+ * type `Out` in an inferable position, and — because `dictionary({ ... })`
+ * supplies this as the contextual type for every inline `i18n.constant(...)` /
+ * `i18n.template(...)` call — would pin `Out` to `unknown`, defeating the
+ * `string` default. Branding on `__locale: (locale: L) => void` alone keeps
+ * locale coverage enforced (an entry that omits a configured locale is
+ * rejected) while leaving `Out` free to fall back to its default.
  *
  * @typeParam L - Locale union for this i18n instance.
  */
-export type Entry<L extends string> = Template<L, unknown> | Constant<L>;
+export type Entry<L extends string> = {
+  readonly __locale: (locale: L) => void;
+};
 
 /**
  * Shape of the object passed to `i18n.dictionary(...)`: a flat record of
@@ -128,17 +151,18 @@ export type Input<L extends string> = Record<string, Entry<L>>;
 /**
  * Resolves a single dictionary entry into the value consumers see on
  * `intl.copy`. {@link Template} entries become typed callables
- * (`(args) => ReactNode`); {@link Constant} entries become a plain
- * {@link ReactNode} property.
+ * (`(args) => Out`); {@link Constant} entries become a plain property of type
+ * `Out`. `Out` is the entry's declared output type — `string` by default, or
+ * {@link ReactNode} when the entry opted in via `<..., ReactNode>`.
  *
  * @typeParam L - Locale union for this i18n instance.
  * @typeParam E - Entry type to resolve.
  */
 export type Resolved<L extends string, E> =
-  E extends Template<L, infer Args>
-    ? (args: Args) => ReactNode
-    : E extends Constant<L>
-      ? ReactNode
+  E extends Template<L, infer Args, infer Out>
+    ? (args: Args) => Out
+    : E extends Constant<L, infer Out>
+      ? Out
       : never;
 
 /**

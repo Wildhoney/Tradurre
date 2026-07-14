@@ -108,31 +108,55 @@ export class I18n<const L extends string> {
    * arguments when invoking the resolved message. Defaults to `object` so
    * token-less messages can be written as `i18n.template({ ... })`.
    *
+   * Every variant returns a `string` by default — the common case, and what
+   * plain-string attributes (`alt`, `title`, `aria-label`) require. Pass
+   * `Out` as {@link ReactNode} — `i18n.template<Args, ReactNode>({ ... })` —
+   * for messages that embed JSX. `Out` never widens by inference: return JSX
+   * from a string-typed template and it's a compile error, not a silent
+   * `[object Object]`. For a token-less message, pass `void` as `Args`:
+   * `i18n.template<void, string>({ ... })` resolves to a no-argument callable.
+   *
    * @typeParam Args - Shape of the tokens object accepted by every variant.
-   * Defaults to `object`.
+   * Pass `void` for a token-less message.
+   * @typeParam Out - Output type of every variant. Defaults to `string`; widen
+   * to {@link ReactNode} for JSX-bearing messages.
    * @param variants - Map from locale key to a formatter that turns
-   * `{ tokens, format }` into a `ReactNode`.
+   * `{ tokens, format }` into `Out`.
    * @returns A {@link Template} that the dictionary will resolve into a
    * typed callable at lookup time.
    */
-  template<Args>(variants: Variants<L, Formatter<Args>>): Template<L, Args> {
-    return new Template<L, Args>(variants as Variants<L, Formatter<unknown>>);
+  template<Args, Out = string>(
+    variants: Variants<L, Formatter<Args, NoInfer<Out>>>,
+  ): Template<L, Args, Out> {
+    return new Template<L, Args, Out>(
+      variants as Variants<L, Formatter<unknown, Out>>,
+    );
   }
 
   /**
    * Wraps a per-locale set of no-argument variants into a {@link Constant}
    * — resolved eagerly and read as a plain property on `intl.copy` (no call
-   * at the consumer site). Variants can be plain {@link ReactNode} values or
-   * `({ format }) => ReactNode` functions when the copy needs locale-bound
-   * `Intl` factories without tokens.
+   * at the consumer site). Variants can be plain values or `({ format }) =>
+   * Out` functions when the copy needs locale-bound `Intl` factories without
+   * tokens.
    *
-   * @param variants - Map from locale key to a {@link ReactNode} value or a
-   * `({ format }) => ReactNode` function.
-   * @returns A {@link Constant} that the dictionary resolves into a
-   * {@link ReactNode} property at lookup time.
+   * Every variant is a `string` by default — usable directly in plain-string
+   * attributes (`alt`, `title`, `aria-label`, `placeholder`). Pass `Out` as
+   * {@link ReactNode} — `i18n.constant<ReactNode>({ ... })` — for constants
+   * that hold JSX. `Out` never widens by inference: putting JSX in a
+   * string-typed constant is a compile error.
+   *
+   * @typeParam Out - Output type of every variant. Defaults to `string`; widen
+   * to {@link ReactNode} for JSX-bearing constants.
+   * @param variants - Map from locale key to a value of type `Out` or a
+   * `({ format }) => Out` function.
+   * @returns A {@link Constant} that the dictionary resolves into an `Out`
+   * property at lookup time.
    */
-  constant(variants: Variants<L, ConstantVariant>): Constant<L> {
-    return new Constant<L>(variants);
+  constant<Out = string>(
+    variants: Variants<L, ConstantVariant<NoInfer<Out>>>,
+  ): Constant<L, Out> {
+    return new Constant<L, Out>(variants as Variants<L, ConstantVariant<Out>>);
   }
 
   /**

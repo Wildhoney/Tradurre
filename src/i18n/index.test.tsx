@@ -137,6 +137,81 @@ describe("new I18n()", () => {
   });
 });
 
+describe("string-first output typing", () => {
+  it("resolves constants and templates to a plain string by default", () => {
+    const { result } = renderHook(() => i18n.useI18n(translations), {
+      wrapper: wrap("en"),
+    });
+    // These annotations compile only if the resolved values are `string`
+    // (not `ReactNode`) — exactly what plain-string attributes such as
+    // `alt`, `title`, and `aria-label` require.
+    const label: string = result.current.copy.signIn;
+    const greeting: string = result.current.copy.greet({ name: "Immy" });
+    expect(label).toBe("Sign in");
+    expect(greeting).toBe("Hello, Immy");
+  });
+
+  it("supports token-less string templates via <void, string>", () => {
+    const dict = i18n.dictionary({
+      close: i18n.template<void, string>({
+        en: () => "Close",
+        fr: () => "Fermer",
+        de: () => "Schließen",
+      }),
+    });
+    const { result } = renderHook(() => i18n.useI18n(dict), {
+      wrapper: wrap("fr"),
+    });
+    const label: string = result.current.copy.close();
+    expect(label).toBe("Fermer");
+  });
+
+  it("rejects JSX in a string-default constant at the type level", () => {
+    i18n.constant({
+      // @ts-expect-error - string is the default output; use constant<ReactNode> for JSX
+      en: <b>Hi</b>,
+      fr: "Salut",
+      de: "Hallo",
+    });
+  });
+
+  it("rejects JSX in a string-default template at the type level", () => {
+    i18n.template<{ name: string }>({
+      // @ts-expect-error - string is the default output; use template<Args, ReactNode> for JSX
+      en: ({ tokens }) => <b>{tokens.name}</b>,
+      fr: ({ tokens }) => `Bonjour, ${tokens.name}`,
+      de: ({ tokens }) => `Hallo, ${tokens.name}`,
+    });
+  });
+
+  it("renders JSX when the output type is widened to ReactNode", () => {
+    const dict = i18n.dictionary({
+      badge: i18n.constant<ReactNode>({
+        en: <strong data-testid="badge">New</strong>,
+        fr: <strong data-testid="badge">Nouveau</strong>,
+        de: <strong data-testid="badge">Neu</strong>,
+      }),
+      tagged: i18n.template<{ count: number }, ReactNode>({
+        en: ({ tokens }) => <em data-testid="tagged">{tokens.count}</em>,
+        fr: ({ tokens }) => <em data-testid="tagged">{tokens.count}</em>,
+        de: ({ tokens }) => <em data-testid="tagged">{tokens.count}</em>,
+      }),
+    });
+    function Probe() {
+      const intl = i18n.useI18n(dict);
+      return (
+        <>
+          {intl.copy.badge}
+          {intl.copy.tagged({ count: 3 })}
+        </>
+      );
+    }
+    const { getByTestId } = render(i18n.withI18n("en", <Probe />));
+    expect(getByTestId("badge")).toHaveTextContent("New");
+    expect(getByTestId("tagged")).toHaveTextContent("3");
+  });
+});
+
 describe("i18n.withI18n()", () => {
   function LocaleProbe() {
     const { locale } = i18n.useLocale();
