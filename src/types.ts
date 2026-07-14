@@ -154,32 +154,61 @@ export type Merged<L extends string, D extends Input<L>> = {
 };
 
 /**
- * Handle returned by `i18n.useLocale()` — the active locale and a setter to
- * change it.
+ * Handle returned by `i18n.useLocale()` — the active locale, the ordered
+ * preference list behind it, and the setters that change either.
+ *
+ * `locale` is always the head of `locales`; the two never diverge. Use
+ * `setLocale` when a single choice is all you have and `setLocales` when you
+ * have a ranked list (a user's language preferences, `navigator.languages`,
+ * a parsed `Accept-Language`). Feed `locales` to {@link acceptLanguage} to
+ * echo the preference order back to your APIs.
  *
  * @typeParam L - Locale union for this i18n instance.
  */
 export type LocaleHandle<L extends string> = {
-  /** Currently active locale. */
+  /** Currently active locale — always the first entry of {@link LocaleHandle.locales}. */
   locale: L;
-  /** Switch the active locale to `next`. */
+  /**
+   * Ordered preferred locales, most-preferred first. A single-entry list
+   * after `setLocale`; the full ranked list after `setLocales`.
+   */
+  locales: readonly L[];
+  /**
+   * Switch to a single preferred locale — shorthand for
+   * `setLocales([next])`, collapsing any existing preference list.
+   */
   setLocale(next: L): void;
+  /**
+   * Replace the ordered preference list; the first entry becomes the active
+   * locale. An empty list is ignored — the active locale can never be empty.
+   */
+  setLocales(next: readonly L[]): void;
 };
 
 /**
  * Props accepted by the `i18n.Provider` React component.
  *
- * If `locale` is supplied the provider runs in controlled mode and the parent
- * owns the active locale; omit it and the provider manages locale state
- * internally, starting from the first entry of the configured `locales` list.
+ * Supply `locales` (a ranked list) or `locale` (a single locale) to run the
+ * provider controlled — the parent owns the value and the head of the list
+ * is the active locale. Omit both and the provider manages the preference
+ * list internally, starting from the first entry of the configured `locales`.
+ * A controlled `locales` array should be stable (memoised by the parent) to
+ * avoid needless re-renders, as with any controlled array prop.
  *
  * @typeParam L - Locale union for this i18n instance.
  */
 export type ProviderProps<L extends string> = {
-  /** Active locale when used as a controlled component. */
+  /** Active locale when used as a controlled component. Ignored if `locales` is set. */
   locale?: L;
-  /** Notified whenever a consumer calls `setLocale(...)`. */
+  /**
+   * Ordered preference list when used as a controlled component, most-preferred
+   * first. Takes precedence over `locale`; its first entry is the active locale.
+   */
+  locales?: readonly L[];
+  /** Notified with the new active locale whenever it changes via either setter. */
   onLocaleChange?(next: L): void;
+  /** Notified with the full preference list whenever it changes via either setter. */
+  onLocalesChange?(next: readonly L[]): void;
   /** React subtree that should see this locale via `useI18n` / `useLocale`. */
   children: ReactNode;
 };

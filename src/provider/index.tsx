@@ -18,26 +18,49 @@ export function makeProvider<L extends string>(initialLocale: L) {
   const Context = createContext<LocaleHandle<L> | null>(null);
 
   /**
-   * Provider component. Pass `locale` for controlled mode (locale is owned
-   * by the parent) or omit it for uncontrolled (locale starts at
-   * `initialLocale` and switches via `setLocale`).
+   * Provider component. Pass `locales` (a ranked list) or `locale` (a single
+   * locale) for controlled mode — the parent owns the value — or omit both
+   * for uncontrolled, where the preference list starts at `initialLocale` and
+   * changes via `setLocale` / `setLocales`.
    *
    * @param props - {@link ProviderProps} controlling locale source and the
    * subtree.
    */
-  function Provider({ locale, onLocaleChange, children }: ProviderProps<L>) {
-    const [internal, setInternal] = useState<L>(locale ?? initialLocale);
-    const active = locale ?? internal;
-    const handle = useMemo<LocaleHandle<L>>(
-      () => ({
-        locale: active,
-        setLocale(next: L) {
-          setInternal(next);
-          onLocaleChange?.(next);
-        },
-      }),
-      [active, onLocaleChange],
+  function Provider({
+    locale,
+    locales,
+    onLocaleChange,
+    onLocalesChange,
+    children,
+  }: ProviderProps<L>) {
+    const [internal, setInternal] = useState<readonly L[]>(() =>
+      controlled(locales, locale, [initialLocale]),
     );
+    // A present `locales` / `locale` prop is authoritative (controlled);
+    // otherwise the internally-managed list wins (uncontrolled).
+    const active = useMemo<readonly L[]>(
+      () => controlled(locales, locale, internal),
+      [locales, locale, internal],
+    );
+    const handle = useMemo<LocaleHandle<L>>(() => {
+      const [head = initialLocale] = active;
+      return {
+        locale: head,
+        locales: active,
+        setLocale(next: L) {
+          setInternal([next]);
+          onLocaleChange?.(next);
+          onLocalesChange?.([next]);
+        },
+        setLocales(next: readonly L[]) {
+          const [first] = next;
+          if (first === undefined) return;
+          setInternal(next);
+          onLocaleChange?.(first);
+          onLocalesChange?.(next);
+        },
+      };
+    }, [active, onLocaleChange, onLocalesChange]);
     return <Context.Provider value={handle}>{children}</Context.Provider>;
   }
 
@@ -58,4 +81,27 @@ export function makeProvider<L extends string>(initialLocale: L) {
   }
 
   return { Provider, useLocale };
+}
+
+/**
+ * Resolves the effective preference list from the (optional) controlled
+ * props, preferring a non-empty `locales` list, then a single `locale`, and
+ * finally `fallback` (the uncontrolled internal state or the initial list).
+ * Kept outside the render body so the resolution rule is shared by the
+ * `useState` initialiser and the per-render `useMemo`.
+ *
+ * @typeParam L - Locale union for this i18n instance.
+ * @param locales - Controlled ranked list, if supplied.
+ * @param locale - Controlled single locale, if supplied.
+ * @param fallback - List to use when neither controlled prop is present.
+ * @returns The non-empty preference list to expose on the handle.
+ */
+function controlled<L extends string>(
+  locales: readonly L[] | undefined,
+  locale: L | undefined,
+  fallback: readonly L[],
+): readonly L[] {
+  if (locales && locales.length > 0) return locales;
+  if (locale !== undefined) return [locale];
+  return fallback;
 }

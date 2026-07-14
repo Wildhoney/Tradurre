@@ -22,6 +22,7 @@
 
 - [Benefits](#benefits)
 - [Getting started](#getting-started)
+- [Preferred languages](#preferred-languages)
 - [RTL / LTR](#rtl--ltr)
 - [Locale detection](#locale-detection)
 - [Writing messages](#writing-messages)
@@ -102,6 +103,38 @@ function LanguageSwitcher() {
 ```
 
 `i18n.isLocale(value)` is a type guard returning `value is L`, so `next` narrows to the locale union inside the branch — no casts needed.
+
+## Preferred languages
+
+`useLocale()` returns the active `locale` **and** the ordered preference list behind it. `setLocale(next)` sets a single language; `setLocales(next)` sets a ranked list where the first entry is the favourite (and becomes the active locale). The two never diverge — `locale` is always `locales[0]`.
+
+```tsx
+function LanguagePreferences() {
+  const { locale, locales, setLocales } = i18n.useLocale();
+
+  // Promote `next` to favourite, keeping the rest as ordered fallbacks.
+  function prefer(next: (typeof locales)[number]) {
+    setLocales([next, ...locales.filter((l) => l !== next)]);
+  }
+
+  return <MyRankedPicker value={locales} active={locale} onPrefer={prefer} />;
+}
+```
+
+Send that preference order to your APIs as a standard `Accept-Language` header with `acceptLanguage(...)` — the one standalone export besides `I18n`. It is pure and framework-agnostic, so it works just as well inside a `fetch` / `axios` interceptor as it does in a component:
+
+```ts
+import { acceptLanguage } from "tradurre";
+
+const { locales } = i18n.useLocale();
+
+await fetch("/api/report", {
+  headers: { "Accept-Language": acceptLanguage(locales) },
+});
+// locales = ["fr", "en", "de"] → "Accept-Language: fr, en;q=0.667, de;q=0.333"
+```
+
+The favourite is emitted bare (implicit `q=1`); each fallback gets a strictly-decreasing quality weight. Blank entries are dropped and duplicates collapse, so the header is always valid. Feed it a list parsed the other direction too — a server can hydrate the provider from the request's own `Accept-Language` via the controlled `locales` prop on `<i18n.Provider>`.
 
 ## RTL / LTR
 
