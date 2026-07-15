@@ -1,4 +1,10 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import {
+  type CSSProperties,
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 
 import { acceptLanguage as toAcceptLanguage } from "../accept-language/index.ts";
 import type { LocaleHandle, ProviderProps } from "../types.ts";
@@ -63,6 +69,7 @@ export function makeProvider<L extends string>(initialLocale: L) {
         acceptLanguage() {
           return toAcceptLanguage(active);
         },
+        transform: mirrorTransform(head),
       };
     }, [active, onLocaleChange, onLocalesChange]);
     return <Context.Provider value={handle}>{children}</Context.Provider>;
@@ -108,4 +115,20 @@ function controlled<L extends string>(
   if (locales && locales.length > 0) return locales;
   if (locale !== undefined) return [locale];
   return fallback;
+}
+
+/**
+ * Builds the icon-mirroring `transform` for a locale — `"scaleX(-1)"` when the
+ * locale reads right-to-left, `undefined` otherwise (so a class-supplied
+ * transform is left intact under LTR). Direction is read from the locale's own
+ * {@link Intl.Locale} text-direction data, so every RTL locale the platform's
+ * CLDR knows resolves correctly with no hand-kept list.
+ *
+ * @param locale - Active locale to derive direction from.
+ * @returns The CSS `transform` value for flipping directional icons, or
+ * `undefined` under LTR.
+ */
+function mirrorTransform(locale: string): CSSProperties["transform"] {
+  const rtl = new Intl.Locale(locale).getTextInfo().direction === "rtl";
+  return rtl ? "scaleX(-1)" : undefined;
 }

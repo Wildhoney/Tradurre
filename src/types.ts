@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import type { Constant, Template } from "./template/index.ts";
 
@@ -216,6 +216,20 @@ export type LocaleHandle<L extends string> = {
    * @returns The header value (e.g. `"fr, en;q=0.667, de;q=0.333"`).
    */
   acceptLanguage(): string;
+  /**
+   * CSS `transform` value for flipping direction-dependent icons under RTL
+   * locales — `"scaleX(-1)"` when the active {@link LocaleHandle.locale} reads
+   * right-to-left, `undefined` otherwise (so a class-supplied transform is left
+   * intact under LTR). Derived from the locale's text direction
+   * (`Intl.Locale.getTextInfo()`), so every RTL locale the platform's CLDR
+   * knows resolves correctly with no hand-maintained list.
+   *
+   * Apply it to directional glyphs (arrows, chevrons, back/next) whose meaning
+   * depends on reading order — `style={{ transform }}` — and leave
+   * direction-neutral icons (checkmarks, spinners, logos) alone. Being a plain
+   * value, it drops into any style object: `style={{ fontSize: 20, transform }}`.
+   */
+  transform: CSSProperties["transform"];
 };
 
 /**

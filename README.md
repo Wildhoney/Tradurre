@@ -162,6 +162,33 @@ export function App() {
 
 `getTextInfo().direction` is `"ltr"` or `"rtl"` — pass it into `<html dir>`, CSS-in-JS, or any UI kit that accepts a `direction` prop (Ant Design, MUI, Chakra, etc.). Because every dictionary entry defines every configured locale, `intl.locale` is always the active locale, so the resolved direction is always correct for the copy you're rendering. Everything else on the standard `Intl.Locale` API — `region`, `script`, `numberingSystem`, `getWeekInfo()`, `getCalendars()`, `getHourCycles()` — is reachable the same way.
 
+### Mirroring icons
+
+Flipping text is only half of RTL — direction-dependent icons (arrows, chevrons, back/next) need reversing too, while direction-neutral ones (checkmarks, spinners, logos) must stay put. `useLocale()` carries a `transform` for exactly this: `"scaleX(-1)"` under RTL, `undefined` under LTR. Apply it to the icons that should flip:
+
+```tsx
+function BackButton() {
+  const { transform } = i18n.useLocale();
+
+  // Reflected under RTL, untouched under LTR:
+  return <ArrowLeftIcon style={{ transform }} />;
+}
+```
+
+Because it's a plain CSS value, it drops straight into any style object alongside your own properties:
+
+```tsx
+function BackButton() {
+  const { transform } = i18n.useLocale();
+
+  return (
+    <ArrowLeftIcon style={{ fontSize: 20, color: "currentColor", transform }} />
+  );
+}
+```
+
+Direction comes straight from the active locale's `Intl.Locale.getTextInfo()`, so Arabic, Hebrew, Persian, Urdu — and any RTL locale the platform's CLDR data knows — all resolve correctly, with no hand-maintained list of RTL languages to keep in sync.
+
 ## Locale detection
 
 `detect()` accepts an explicit list of BCP-47 candidates when the locale shouldn't come from `navigator` — useful for cookies, query strings, server-rendered headers, or a stored user preference taking precedence over the browser:

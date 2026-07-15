@@ -162,3 +162,34 @@ describe("Provider / useLocale()", () => {
     expect(() => render(<Probe />)).toThrow(/outside of an <i18n.Provider>/);
   });
 });
+
+describe("useLocale().transform", () => {
+  it("is undefined under an LTR locale", () => {
+    const { Provider, useLocale } = makeProvider<"en" | "ar">("en");
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <Provider>{children}</Provider>
+    );
+    const { result } = renderHook(() => useLocale(), { wrapper });
+    expect(result.current.transform).toBeUndefined();
+  });
+
+  it("is scaleX(-1) under an RTL locale", () => {
+    const { Provider, useLocale } = makeProvider<"en" | "ar">("en");
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <Provider locale="ar">{children}</Provider>
+    );
+    const { result } = renderHook(() => useLocale(), { wrapper });
+    expect(result.current.transform).toBe("scaleX(-1)");
+  });
+
+  it("tracks the active locale's direction across setLocale", () => {
+    const { Provider, useLocale } = makeProvider<"en" | "ar">("en");
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <Provider>{children}</Provider>
+    );
+    const { result } = renderHook(() => useLocale(), { wrapper });
+    expect(result.current.transform).toBeUndefined();
+    act(() => result.current.setLocale("ar"));
+    expect(result.current.transform).toBe("scaleX(-1)");
+  });
+});
