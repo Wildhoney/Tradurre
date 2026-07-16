@@ -24,6 +24,7 @@
 - [Getting started](#getting-started)
 - [Preferred languages](#preferred-languages)
 - [Text direction](#text-direction)
+- [Formatting locale](#formatting-locale)
 - [Locale detection](#locale-detection)
 - [Writing messages](#writing-messages)
 - [Usage](#usage)
@@ -33,11 +34,13 @@
 ## Benefits
 
 - Plain TS / JS — interpolation is template literals; every locale-scoped `Intl` type (`NumberFormat`, `DateTimeFormat`, `PluralRules`, `Collator`, `DisplayNames`, `DurationFormat`, `ListFormat`, `RelativeTimeFormat`, `Segmenter`) is injected per formatter.
+- Counting & branching — `plural` (cardinal — *1 item*) and `ordinal` (position — *1st*) are separate factories that can't be confused, and `select` does ICU-style gender/enum branching with a required `other` fallback, all in plain TS.
 - Type-safe arguments — `template<{ name: string }>({...})` enforces the argument shape across every locale.
 - Message-first nesting — each message lives next to its translations.
 - Full coverage enforced — every dictionary entry must define every configured locale; partial coverage is a compile-time error.
 - String-first, JSX-ready — messages resolve to `string` by default, so they drop straight into `alt` / `title` / `aria-label`; widen the output to `ReactNode` with one type parameter when a message embeds JSX (links, styled spans, icons) — no wrapper component.
-- RTL / LTR ready — every resolved bundle carries a full `Intl.Locale`, so `intl.locale.getTextInfo().direction` gives you `"ltr"` or `"rtl"` for the active locale directly.
+- Region ≠ language — a `formatting` override (region, calendar, numbering system, hour cycle) drives every `Intl` factory independently of the message language, so an English UI can format money and dates for the UAE, render Hijri dates, or shape Eastern-Arabic digits.
+- RTL / LTR ready — every resolved bundle carries a full `Intl.Locale`, so `intl.locale.getTextInfo().direction` gives you `"ltr"` or `"rtl"` for the active locale directly, and `useLocale().transform` hands back the React Native transform for mirroring directional icons.
 - No runtime DSL — drop the `intl-messageformat` parser entirely.
 
 For runtimes without native `Intl.PluralRules` / `Intl.NumberFormat` / `Intl.DateTimeFormat` (older embedded webviews, some Hermes builds), Tradurre accepts a per-formatter `polyfills` map on `new I18n({...})` — see the [Intl polyfills recipe](./recipes/intl-polyfills.md).
@@ -164,30 +167,65 @@ export function App() {
 
 ### Mirroring icons
 
-Flipping text is only half of RTL — direction-dependent icons (arrows, chevrons, back/next) need reversing too, while direction-neutral ones (checkmarks, spinners, logos) must stay put. `useLocale()` carries a `transform` for exactly this: `"scaleX(-1)"` under RTL, `undefined` under LTR. Apply it to the icons that should flip:
+Flipping text is only half of RTL — direction-dependent icons (arrows, chevrons, back/next) need reversing too, while direction-neutral ones (checkmarks, spinners, logos) must stay put. `useLocale()` carries a `transform` for exactly this: `{ scaleX: -1 }` under RTL, `undefined` under LTR. It's a React Native transform entry, so it goes into a transform _array_ — drop it in on the icons that should flip:
 
 ```tsx
 function BackButton() {
   const { transform } = i18n.useLocale();
 
   // Reflected under RTL, untouched under LTR:
-  return <ArrowLeftIcon style={{ transform }} />;
+  return <ArrowLeftIcon style={{ transform: transform && [transform] }} />;
 }
 ```
 
-Because it's a plain CSS value, it drops straight into any style object alongside your own properties:
+Because it's a single entry, it also spreads cleanly alongside your own transforms:
 
 ```tsx
 function BackButton() {
   const { transform } = i18n.useLocale();
 
   return (
-    <ArrowLeftIcon style={{ fontSize: 20, color: "currentColor", transform }} />
+    <ArrowLeftIcon
+      style={{ transform: [{ translateY: 2 }, ...(transform ? [transform] : [])] }}
+    />
   );
 }
 ```
 
+The entry-not-CSS-string shape is deliberate: React Native styles take an array of transform objects, and RN ≥ 0.74 also accepts the CSS-string form — so `{ scaleX: -1 }` composes on native without assuming the web DOM. On the web, wrap it yourself: `transform: transform ? "scaleX(-1)" : undefined`.
+
 Direction comes straight from the active locale's `Intl.Locale.getTextInfo()`, so Arabic, Hebrew, Persian, Urdu — and any RTL locale the platform's CLDR data knows — all resolve correctly, with no hand-maintained list of RTL languages to keep in sync.
+
+## Formatting locale
+
+The language a message is written in and the conventions its numbers, dates, and currencies follow are two different questions. An English UI in the UAE still wants `AED`, UAE date formats, and — for some users — Hijri dates. Tradurre keeps the two separate: the **display locale** (from your `Locale` union) picks which variant of a message to render, while a **formatting locale** drives every `Intl` factory. They coincide until you set a `formatting` override.
+
+`useLocale()` carries `formatting` (the active overrides), `setFormatting` (to change them at runtime), and `formatLocale` (the resolved tag `Intl` is built from). Each override maps to an `Intl.Locale` option — `region`, `calendar`, `numberingSystem`, `hourCycle` — and composes onto the display locale:
+
+```tsx
+function RegionSettings() {
+  const { formatting, setFormatting, formatLocale } = i18n.useLocale();
+
+  // Display language stays whatever the user reads; only formatting changes.
+  // formatLocale → "en-AE-u-ca-islamic-nu-arab"
+  return (
+    <Toggle
+      label="Show Hijri dates"
+      checked={formatting.calendar === "islamic"}
+      onChange={(islamic) =>
+        setFormatting({
+          ...formatting,
+          region: "AE",
+          calendar: islamic ? "islamic" : undefined,
+          numberingSystem: "arab",
+        })
+      }
+    />
+  );
+}
+```
+
+Every `format` factory then inherits it with no per-call options — `format.dateTime({ dateStyle: "long" })` renders Hijri dates, `format.number({ style: "currency", currency: "AED" })` shapes Eastern-Arabic digits — and `intl.locale` reflects the resolved tag (`intl.locale.calendar`, `intl.locale.region`, …). Set it once at the boundary via the controlled `formatting` prop on `<i18n.Provider>` (hydrate it from a cookie or the user's region), or let the provider manage it and flip it live with `setFormatting`. Omit it entirely and `formatLocale` equals the display locale — nothing changes.
 
 ## Locale detection
 
@@ -265,6 +303,54 @@ export const greet = i18n.template<Tokens.Greet>({
 });
 
 export const translations = i18n.dictionary({ signIn, greet });
+```
+
+### Counting and branching
+
+Three helpers on `format` cover the cases a DSL would reach for a `{plural}` / `{selectordinal}` / `{select}` block — here they're plain function calls, so the branching is ordinary TS you can read and step through.
+
+`format.plural()` is **cardinal** ("how many" — _1 item_ / _2 items_); `format.ordinal()` is **position** (_1st_ / _2nd_ / _3rd_). They're deliberately separate factories — `plural`'s `type` is pinned to `"cardinal"` and `ordinal`'s to `"ordinal"` — so you can't accidentally select cardinal categories for ordinal copy. Both return an `Intl.PluralRules`; map its `.select(n)` category to your wording:
+
+```ts
+namespace Tokens {
+  type Rank = { place: number };
+}
+
+const ordinalSuffix: Record<Intl.LDMLPluralRule, string> = {
+  zero: "th",
+  one: "st",
+  two: "nd",
+  few: "rd",
+  many: "th",
+  other: "th",
+};
+
+export const rank = i18n.template<Tokens.Rank>({
+  [Locale.En]({ tokens, format }) {
+    const suffix = ordinalSuffix[format.ordinal().select(tokens.place)];
+    return `${tokens.place}${suffix}`; // 1 → "1st", 2 → "2nd", 3 → "3rd"
+  },
+  [Locale.Fr]({ tokens }) {
+    return `${tokens.place}e`;
+  },
+});
+```
+
+`format.select(value, cases)` branches on an arbitrary token — grammatical gender, an account tier, any enum — the way ICU's `{g, select, …}` does. The `other` case is required, so an unhandled value can never fall through to `undefined`:
+
+```ts
+export const updated = i18n.template<{ name: string; gender: string }>({
+  [Locale.En]({ tokens, format }) {
+    return format.select(tokens.gender, {
+      female: `${tokens.name} updated her profile`,
+      male: `${tokens.name} updated his profile`,
+      other: `${tokens.name} updated their profile`,
+    });
+  },
+  [Locale.Fr]({ tokens }) {
+    return `${tokens.name} a mis à jour son profil`;
+  },
+});
 ```
 
 ## Usage

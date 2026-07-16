@@ -1,13 +1,12 @@
-import {
-  type CSSProperties,
-  createContext,
-  useContext,
-  useMemo,
-  useState,
-} from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 
 import { acceptLanguage as toAcceptLanguage } from "../accept-language/index.ts";
-import type { LocaleHandle, ProviderProps } from "../types.ts";
+import type {
+  Formatting,
+  LocaleHandle,
+  MirrorTransform,
+  ProviderProps,
+} from "../types.ts";
 
 /**
  * Factory that builds a locale-scoped React provider and the matching
@@ -36,12 +35,17 @@ export function makeProvider<L extends string>(initialLocale: L) {
   function Provider({
     locale,
     locales,
+    formatting,
     onLocaleChange,
     onLocalesChange,
+    onFormattingChange,
     children,
   }: ProviderProps<L>) {
     const [internal, setInternal] = useState<readonly L[]>(() =>
       controlled(locales, locale, [initialLocale]),
+    );
+    const [internalFormatting, setInternalFormatting] = useState<Formatting>(
+      () => formatting ?? {},
     );
     // A present `locales` / `locale` prop is authoritative (controlled);
     // otherwise the internally-managed list wins (uncontrolled).
@@ -49,6 +53,9 @@ export function makeProvider<L extends string>(initialLocale: L) {
       () => controlled(locales, locale, internal),
       [locales, locale, internal],
     );
+    // Same rule for formatting: a controlled `formatting` prop wins, else the
+    // internally-managed overrides.
+    const activeFormatting = formatting ?? internalFormatting;
     const handle = useMemo<LocaleHandle<L>>(() => {
       const [head = initialLocale] = active;
       return {
@@ -70,8 +77,20 @@ export function makeProvider<L extends string>(initialLocale: L) {
           return toAcceptLanguage(active);
         },
         transform: mirrorTransform(head),
+        formatting: activeFormatting,
+        setFormatting(next: Formatting) {
+          setInternalFormatting(next);
+          onFormattingChange?.(next);
+        },
+        formatLocale: resolveFormatLocale(head, activeFormatting),
       };
-    }, [active, onLocaleChange, onLocalesChange]);
+    }, [
+      active,
+      activeFormatting,
+      onLocaleChange,
+      onLocalesChange,
+      onFormattingChange,
+    ]);
     return <Context.Provider value={handle}>{children}</Context.Provider>;
   }
 
@@ -118,17 +137,34 @@ function controlled<L extends string>(
 }
 
 /**
- * Builds the icon-mirroring `transform` for a locale — `"scaleX(-1)"` when the
- * locale reads right-to-left, `undefined` otherwise (so a class-supplied
- * transform is left intact under LTR). Direction is read from the locale's own
- * {@link Intl.Locale} text-direction data, so every RTL locale the platform's
- * CLDR knows resolves correctly with no hand-kept list.
+ * Builds the icon-mirroring `transform` for a locale — `{ scaleX: -1 }` when
+ * the locale reads right-to-left, `undefined` otherwise (so an LTR icon is
+ * left intact). Direction is read from the locale's own {@link Intl.Locale}
+ * text-direction data, so every RTL locale the platform's CLDR knows resolves
+ * correctly with no hand-kept list.
  *
  * @param locale - Active locale to derive direction from.
- * @returns The CSS `transform` value for flipping directional icons, or
+ * @returns The React Native transform entry for flipping directional icons, or
  * `undefined` under LTR.
  */
-function mirrorTransform(locale: string): CSSProperties["transform"] {
+function mirrorTransform(locale: string): MirrorTransform | undefined {
   const rtl = new Intl.Locale(locale).getTextInfo().direction === "rtl";
-  return rtl ? "scaleX(-1)" : undefined;
+  if (!rtl) return undefined;
+  return { scaleX: -1 };
+}
+
+/**
+ * Composes the formatting locale from a display locale and its
+ * {@link Formatting} overrides — the tag `Intl` factories are built from.
+ * Uses {@link Intl.Locale} so region, calendar, numbering system, and hour
+ * cycle land in the right subtags / Unicode extensions (e.g.
+ * `("en", { region: "AE", calendar: "islamic" })` → `"en-AE-u-ca-islamic"`).
+ * With no overrides it returns the display locale unchanged.
+ *
+ * @param locale - Active display locale.
+ * @param formatting - Overrides layered onto it; `undefined` fields inherit.
+ * @returns The resolved formatting locale as a BCP-47 tag.
+ */
+function resolveFormatLocale(locale: string, formatting: Formatting): string {
+  return new Intl.Locale(locale, formatting).toString();
 }

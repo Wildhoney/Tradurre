@@ -108,6 +108,116 @@ describe("Dictionary.resolve()", () => {
     expect(dict.resolve("en").copy.items({ count: 5 })).toBe("5 items");
   });
 
+  it("passes format.ordinal to Template formatters for 1st / 2nd / 3rd", () => {
+    const suffixes: Record<Intl.LDMLPluralRule, string> = {
+      zero: "th",
+      one: "st",
+      two: "nd",
+      few: "rd",
+      many: "th",
+      other: "th",
+    };
+    const dict = dictionary({
+      rank: template<{ place: number }>({
+        en({ tokens, format }) {
+          return `${tokens.place}${suffixes[format.ordinal().select(tokens.place)]}`;
+        },
+        fr({ tokens }) {
+          return `${tokens.place}e`;
+        },
+      }),
+    });
+    const rank = (place: number) => dict.resolve("en").copy.rank({ place });
+    expect([rank(1), rank(2), rank(3), rank(4), rank(21)]).toEqual([
+      "1st",
+      "2nd",
+      "3rd",
+      "4th",
+      "21st",
+    ]);
+  });
+
+  it("branches on a token via format.select with an other fallback", () => {
+    const dict = dictionary({
+      updated: template<{ name: string; gender: string }>({
+        en({ tokens, format }) {
+          return format.select(tokens.gender, {
+            female: `${tokens.name} updated her profile`,
+            male: `${tokens.name} updated his profile`,
+            other: `${tokens.name} updated their profile`,
+          });
+        },
+        fr({ tokens }) {
+          return `${tokens.name} a mis à jour son profil`;
+        },
+      }),
+    });
+    const updated = dict.resolve("en").copy.updated;
+    expect(updated({ name: "Ada", gender: "female" })).toBe(
+      "Ada updated her profile",
+    );
+    expect(updated({ name: "Rex", gender: "male" })).toBe(
+      "Rex updated his profile",
+    );
+    expect(updated({ name: "Sam", gender: "nonbinary" })).toBe(
+      "Sam updated their profile",
+    );
+  });
+
+  it("formats against a distinct formatLocale while keeping the display variant", () => {
+    const dict = dictionary({
+      price: template<{ amount: number }>({
+        en({ tokens, format }) {
+          return format
+            .number({ style: "currency", currency: "AED" })
+            .format(tokens.amount);
+        },
+        fr({ tokens, format }) {
+          return format
+            .number({ style: "currency", currency: "EUR" })
+            .format(tokens.amount);
+        },
+      }),
+    });
+    const bundle = dict.resolve("en", "en-AE-u-nu-arab");
+    expect(bundle.locale.baseName).toBe("en-AE");
+    expect(bundle.locale.numberingSystem).toBe("arab");
+    expect(bundle.copy.price({ amount: 1234.5 })).toBe(
+      new Intl.NumberFormat("en-AE-u-nu-arab", {
+        style: "currency",
+        currency: "AED",
+      }).format(1234.5),
+    );
+  });
+
+  it("renders Hijri dates when the formatLocale carries an islamic calendar", () => {
+    const dict = dictionary({
+      today: template<{ when: Date }>({
+        en({ tokens, format }) {
+          return format.dateTime({ dateStyle: "long" }).format(tokens.when);
+        },
+        fr({ tokens, format }) {
+          return format.dateTime({ dateStyle: "long" }).format(tokens.when);
+        },
+      }),
+    });
+    const when = new Date("2026-07-16T00:00:00Z");
+    expect(dict.resolve("en", "en-u-ca-islamic").copy.today({ when })).toBe(
+      new Intl.DateTimeFormat("en-u-ca-islamic", { dateStyle: "long" }).format(
+        when,
+      ),
+    );
+  });
+
+  it("memoises separately per (display, formatLocale) pair", () => {
+    const dict = dictionary({
+      signIn: constant({ en: "Sign in", fr: "Se connecter" }),
+    });
+    expect(dict.resolve("en")).toBe(dict.resolve("en"));
+    expect(dict.resolve("en", "en-AE")).toBe(dict.resolve("en", "en-AE"));
+    expect(dict.resolve("en")).not.toBe(dict.resolve("en", "en-AE"));
+  });
+
   it("exposes the full Intl surface on format", () => {
     const dict = dictionary({
       probe: template<Record<string, never>>({

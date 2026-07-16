@@ -12,7 +12,14 @@ export function makeFormat(locale: string): Format {
   return {
     number: (options) => new Intl.NumberFormat(locale, options),
     dateTime: (options) => new Intl.DateTimeFormat(locale, options),
-    plural: (options) => new Intl.PluralRules(locale, options),
+    plural: (options) =>
+      new Intl.PluralRules(locale, { ...options, type: "cardinal" }),
+    ordinal: (options) =>
+      new Intl.PluralRules(locale, { ...options, type: "ordinal" }),
+    select(value, cases) {
+      const matched = cases[value];
+      return matched === undefined ? cases.other : matched;
+    },
     collator: (options) => new Intl.Collator(locale, options),
     displayNames: (options) => new Intl.DisplayNames(locale, options),
     duration: (options) => new Intl.DurationFormat(locale, options),

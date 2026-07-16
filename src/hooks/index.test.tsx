@@ -9,7 +9,7 @@ const dictionary = makeDictionary<"en" | "fr">();
 const template = makeTemplate<"en" | "fr">();
 
 function fixed(locale: "en" | "fr") {
-  return () => ({ locale });
+  return () => ({ locale, formatLocale: locale });
 }
 
 describe("useI18n()", () => {

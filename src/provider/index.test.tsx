@@ -179,7 +179,7 @@ describe("useLocale().transform", () => {
       <Provider locale="ar">{children}</Provider>
     );
     const { result } = renderHook(() => useLocale(), { wrapper });
-    expect(result.current.transform).toBe("scaleX(-1)");
+    expect(result.current.transform).toEqual({ scaleX: -1 });
   });
 
   it("tracks the active locale's direction across setLocale", () => {
@@ -190,6 +190,64 @@ describe("useLocale().transform", () => {
     const { result } = renderHook(() => useLocale(), { wrapper });
     expect(result.current.transform).toBeUndefined();
     act(() => result.current.setLocale("ar"));
-    expect(result.current.transform).toBe("scaleX(-1)");
+    expect(result.current.transform).toEqual({ scaleX: -1 });
+  });
+});
+
+describe("useLocale().formatting / formatLocale", () => {
+  it("defaults formatLocale to the display locale with no overrides", () => {
+    const { Provider, useLocale } = makeProvider<"en" | "ar">("en");
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <Provider>{children}</Provider>
+    );
+    const { result } = renderHook(() => useLocale(), { wrapper });
+    expect(result.current.formatting).toEqual({});
+    expect(result.current.formatLocale).toBe("en");
+  });
+
+  it("composes region and calendar overrides onto the display locale", () => {
+    const { Provider, useLocale } = makeProvider<"en" | "ar">("en");
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <Provider formatting={{ region: "AE", calendar: "islamic" }}>
+        {children}
+      </Provider>
+    );
+    const { result } = renderHook(() => useLocale(), { wrapper });
+    expect(result.current.formatLocale).toBe("en-AE-u-ca-islamic");
+  });
+
+  it("switches the formatting locale at runtime via setFormatting", () => {
+    const { Provider, useLocale } = makeProvider<"en" | "ar">("en");
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <Provider>{children}</Provider>
+    );
+    const { result } = renderHook(() => useLocale(), { wrapper });
+    expect(result.current.formatLocale).toBe("en");
+    act(() => result.current.setFormatting({ calendar: "islamic" }));
+    expect(result.current.formatLocale).toBe("en-u-ca-islamic");
+  });
+
+  it("tracks the display locale so overrides follow setLocale", () => {
+    const { Provider, useLocale } = makeProvider<"en" | "ar">("en");
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <Provider>{children}</Provider>
+    );
+    const { result } = renderHook(() => useLocale(), { wrapper });
+    act(() => result.current.setFormatting({ numberingSystem: "arab" }));
+    act(() => result.current.setLocale("ar"));
+    expect(result.current.formatLocale).toBe("ar-u-nu-arab");
+  });
+
+  it("notifies onFormattingChange when setFormatting runs", () => {
+    const { Provider, useLocale } = makeProvider<"en" | "ar">("en");
+    const seen: Array<Record<string, unknown>> = [];
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <Provider onFormattingChange={(next) => seen.push(next)}>
+        {children}
+      </Provider>
+    );
+    const { result } = renderHook(() => useLocale(), { wrapper });
+    act(() => result.current.setFormatting({ calendar: "buddhist" }));
+    expect(seen).toEqual([{ calendar: "buddhist" }]);
   });
 });

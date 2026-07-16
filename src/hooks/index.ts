@@ -9,10 +9,12 @@ import type { Input, ResolvedDictionary } from "../types.ts";
  *
  * @typeParam L - Locale union for this i18n instance.
  * @param useLocale - Hook returning the active locale handle for the
- * surrounding provider.
+ * surrounding provider — its display `locale` and resolved `formatLocale`.
  * @returns An object exposing a typed `useI18n` hook.
  */
-export function makeHooks<L extends string>(useLocale: () => { locale: L }) {
+export function makeHooks<L extends string>(
+  useLocale: () => { locale: L; formatLocale: string },
+) {
   /**
    * Resolves a {@link Dictionary} against the active locale.
    *
@@ -26,7 +28,8 @@ export function makeHooks<L extends string>(useLocale: () => { locale: L }) {
   function useI18n<D extends Input<L>>(
     dictionary: Dictionary<L, D>,
   ): ResolvedDictionary<L, D> {
-    return dictionary.resolve(useLocale().locale);
+    const { locale, formatLocale } = useLocale();
+    return dictionary.resolve(locale, formatLocale);
   }
 
   return { useI18n };

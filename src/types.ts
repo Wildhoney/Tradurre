@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import type { Constant, Template } from "./template/index.ts";
 
@@ -36,21 +36,63 @@ declare global {
 }
 
 /**
+ * Branch map accepted by {@link Format.select} — a case per expected token
+ * value plus a mandatory `other` fallback (mirroring ICU `select`'s required
+ * `other`), so an unhandled value can never resolve to `undefined`.
+ *
+ * @typeParam Out - Value each branch produces (`string`, {@link ReactNode}, …).
+ */
+export type SelectCases<Out> = { other: Out } & Record<string, Out>;
+
+/**
  * Locale-bound `Intl` factories handed to every template formatter. Each
  * method returns a fresh `Intl` instance configured for the active locale
  * — call inline; the runtime handles per-locale memoisation.
  *
  * Covers every locale-scoped `Intl` type in the spec — from the widely-shipped
  * `number` / `dateTime` / `plural` / `collator` / `displayNames` / `list` /
- * `relativeTime` / `segmenter` to the stage-3 `duration` (Intl.DurationFormat).
+ * `relativeTime` / `segmenter` to the stage-3 `duration` (Intl.DurationFormat)
+ * — plus two message-authoring helpers: `ordinal` (position rules, distinct
+ * from cardinal `plural`) and `select` (ICU-style branching in plain TS).
  */
 export type Format = {
   /** Returns an `Intl.NumberFormat` for the active locale. */
   number(options?: Intl.NumberFormatOptions): Intl.NumberFormat;
   /** Returns an `Intl.DateTimeFormat` for the active locale. */
   dateTime(options?: Intl.DateTimeFormatOptions): Intl.DateTimeFormat;
-  /** Returns an `Intl.PluralRules` for the active locale. */
-  plural(options?: Intl.PluralRulesOptions): Intl.PluralRules;
+  /**
+   * Returns a **cardinal** `Intl.PluralRules` for the active locale — the
+   * "how many" rules behind *1 item* / *2 items*. `type` is fixed to
+   * `"cardinal"` and cannot be overridden; reach for {@link Format.ordinal}
+   * when you need *1st* / *2nd* / *3rd*. Keeping the two apart makes it
+   * impossible to select cardinal categories for ordinal copy — or the
+   * reverse — by mistake.
+   */
+  plural(options?: Omit<Intl.PluralRulesOptions, "type">): Intl.PluralRules;
+  /**
+   * Returns an **ordinal** `Intl.PluralRules` for the active locale — the
+   * position rules behind *1st* / *2nd* / *3rd*. `type` is fixed to
+   * `"ordinal"`. Feed `format.ordinal().select(n)` into a per-locale suffix
+   * map keyed by `Intl.LDMLPluralRule` (English: `one → "st"`, `two → "nd"`,
+   * `few → "rd"`, everything else `"th"`).
+   */
+  ordinal(options?: Omit<Intl.PluralRulesOptions, "type">): Intl.PluralRules;
+  /**
+   * Branches on an arbitrary token — grammatical gender, an account tier, any
+   * enum — the way ICU's `{g, select, …}` does, but in plain TS. Returns
+   * `cases[value]` when present (and non-`undefined`), otherwise the required
+   * `cases.other`. Locale-neutral, and lives here for parity with
+   * {@link Format.plural} when authoring a message whose surrounding variant is
+   * already locale-specific.
+   *
+   * @example
+   * format.select(tokens.gender, {
+   *   female: `${tokens.name} updated her profile`,
+   *   male: `${tokens.name} updated his profile`,
+   *   other: `${tokens.name} updated their profile`,
+   * })
+   */
+  select<Out>(value: string, cases: SelectCases<Out>): Out;
   /** Returns an `Intl.Collator` for the active locale. */
   collator(options?: Intl.CollatorOptions): Intl.Collator;
   /**
@@ -178,6 +220,38 @@ export type Merged<L extends string, D extends Input<L>> = {
 };
 
 /**
+ * Value returned by {@link LocaleHandle.transform} for mirroring
+ * direction-dependent icons: a single React Native transform entry
+ * (`{ scaleX: -1 }`) under RTL. Drop it into a transform array
+ * — `style={{ transform: transform && [transform] }}` — or spread it
+ * alongside your own entries. Deliberately not the CSS string `"scaleX(-1)"`,
+ * so it composes with RN's array-of-transforms `style` shape rather than the
+ * web-only DOM `transform` string.
+ */
+export type MirrorTransform = { readonly scaleX: -1 };
+
+/**
+ * Formatting overrides layered onto the active display locale to build the
+ * **formatting locale** — the tag that drives every `Intl` factory and the
+ * {@link Intl.Locale} on `useI18n(...)`, independent of which language the
+ * copy is written in. Lets an English UI format money, dates, and digits for
+ * the UAE (`region: "AE"`), render Hijri dates (`calendar: "islamic"`), or
+ * switch digit shaping (`numberingSystem: "arab"`) without touching the
+ * message language. Each field maps to the matching {@link Intl.Locale}
+ * option; omit a field to inherit it from the display locale.
+ */
+export type Formatting = {
+  /** Region subtag (e.g. `"AE"`) — drives currency defaults, week start, formats. */
+  region?: string;
+  /** Calendar system (e.g. `"islamic"`, `"gregory"`, `"buddhist"`). */
+  calendar?: string;
+  /** Numbering system (e.g. `"latn"` for `0-9`, `"arab"` for `٠-٩`). */
+  numberingSystem?: string;
+  /** Hour cycle for time formatting. */
+  hourCycle?: "h11" | "h12" | "h23" | "h24";
+};
+
+/**
  * Handle returned by `i18n.useLocale()` — the active locale, the ordered
  * preference list behind it, the setters that change either, and a helper
  * that serialises the list for your APIs.
@@ -217,19 +291,42 @@ export type LocaleHandle<L extends string> = {
    */
   acceptLanguage(): string;
   /**
-   * CSS `transform` value for flipping direction-dependent icons under RTL
-   * locales — `"scaleX(-1)"` when the active {@link LocaleHandle.locale} reads
-   * right-to-left, `undefined` otherwise (so a class-supplied transform is left
-   * intact under LTR). Derived from the locale's text direction
-   * (`Intl.Locale.getTextInfo()`), so every RTL locale the platform's CLDR
-   * knows resolves correctly with no hand-maintained list.
+   * Transform entry for flipping direction-dependent icons under RTL locales
+   * — `{ scaleX: -1 }` when the active {@link LocaleHandle.locale} reads
+   * right-to-left, `undefined` otherwise (so an LTR icon is left intact).
+   * Derived from the locale's text direction (`Intl.Locale.getTextInfo()`), so
+   * every RTL locale the platform's CLDR knows resolves correctly with no
+   * hand-maintained list.
    *
    * Apply it to directional glyphs (arrows, chevrons, back/next) whose meaning
-   * depends on reading order — `style={{ transform }}` — and leave
-   * direction-neutral icons (checkmarks, spinners, logos) alone. Being a plain
-   * value, it drops into any style object: `style={{ fontSize: 20, transform }}`.
+   * depends on reading order and leave direction-neutral icons (checkmarks,
+   * spinners, logos) alone. It's a React Native transform object, so it goes
+   * into a transform *array* — `style={{ transform: transform && [transform] }}`
+   * — or spreads alongside your own entries:
+   * `style={{ transform: [{ translateY: 2 }, ...(transform ? [transform] : [])] }}`.
    */
-  transform: CSSProperties["transform"];
+  transform: MirrorTransform | undefined;
+  /**
+   * Active formatting overrides layered onto {@link LocaleHandle.locale} to
+   * derive {@link LocaleHandle.formatLocale}. Empty (`{}`) by default, so the
+   * formatting locale equals the display locale until one is set.
+   */
+  formatting: Formatting;
+  /**
+   * Replace the formatting overrides — region, calendar system, numbering
+   * system, hour cycle. Runtime-switchable, so a "show Hijri dates" or a
+   * region toggle re-renders every formatter without changing the message
+   * language.
+   */
+  setFormatting(next: Formatting): void;
+  /**
+   * The resolved **formatting locale** — {@link LocaleHandle.locale} with
+   * {@link LocaleHandle.formatting} applied, as a BCP-47 tag (e.g.
+   * `"en-AE-u-ca-islamic"`). This is the tag `useI18n(...)`'s `format`
+   * factories and `Intl.Locale` are built from; equals `locale` when no
+   * overrides are set.
+   */
+  formatLocale: string;
 };
 
 /**
@@ -252,10 +349,20 @@ export type ProviderProps<L extends string> = {
    * first. Takes precedence over `locale`; its first entry is the active locale.
    */
   locales?: readonly L[];
+  /**
+   * Formatting overrides when controlled — region, calendar, numbering system,
+   * hour cycle — layered onto the active locale to build the formatting locale.
+   * Omit to manage internally via `setFormatting`. Memoise it (as with a
+   * controlled `locales` array) so a fresh object each render doesn't churn
+   * every formatter.
+   */
+  formatting?: Formatting;
   /** Notified with the new active locale whenever it changes via either setter. */
   onLocaleChange?(next: L): void;
   /** Notified with the full preference list whenever it changes via either setter. */
   onLocalesChange?(next: readonly L[]): void;
+  /** Notified with the new overrides whenever they change via `setFormatting`. */
+  onFormattingChange?(next: Formatting): void;
   /** React subtree that should see this locale via `useI18n` / `useLocale`. */
   children: ReactNode;
 };
@@ -336,9 +443,11 @@ export type ResolvedDictionary<L extends string, D extends Input<L>> = {
   /** Fully resolved dictionary — each entry a typed callable. */
   copy: Merged<L, D>;
   /**
-   * Active locale as an {@link Intl.Locale} instance. Reach direction via
-   * `locale.getTextInfo().direction`, calendars via `locale.getCalendars()`,
-   * region via `locale.region`, etc.
+   * Active formatting locale as an {@link Intl.Locale} instance — the display
+   * locale with any {@link Formatting} overrides applied. Reach direction via
+   * `locale.getTextInfo().direction`, the resolved calendar via
+   * `locale.calendar` / `locale.getCalendars()`, region via `locale.region`,
+   * etc.
    */
   locale: Intl.Locale;
 };
