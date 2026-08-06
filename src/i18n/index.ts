@@ -42,10 +42,7 @@ export class I18n<const L extends string> {
   /** Hook returning the active locale handle from the current provider. */
   readonly useLocale: ReturnType<typeof makeProvider<L>>["useLocale"];
 
-  /**
-   * Hook that resolves one or more {@link Dictionary} bundles against the
-   * active locale, merging them last-wins when several are passed.
-   */
+  /** Hook that resolves a {@link Dictionary} against the active locale. */
   readonly useI18n: ReturnType<typeof makeHooks<L>>["useI18n"];
 
   /**

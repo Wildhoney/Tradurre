@@ -134,16 +134,23 @@ export function Welcome({ name }: WelcomeProps) {
 
 ### Common copy
 
-`useI18n` also accepts **several dictionaries at once**. Hoist shared microcopy — button labels (`OK`, `Save`, `Cancel`), validation messages, anything reused across screens — into a common dictionary, then layer a screen's own copy over it in one call:
+Reuse shared microcopy — button labels (`OK`, `Save`, `Cancel`), validation messages, anything common across screens — by keeping it in its own **input map** and spreading it into each screen's dictionary. Dictionary inputs are plain objects, so `{ ...common, ...screen }` merges them with the **last one winning** any shared message id — in both the values _and_ the types — and `i18n.dictionary(...)` builds one typed bundle from the merged input:
 
 ```tsx
-import { commonTranslations } from "./common";
-import { translations } from "./translations";
+import { common } from "./common"; // a plain input map: { ok, cancel, … }
 
-const intl = i18n.useI18n(commonTranslations, translations);
+export const translations = i18n.dictionary({
+  ...common,
+  // also defined in `common`, so this screen-specific entry wins — value and type
+  ok: i18n.constant({
+    [Locale.En]: "Continue",
+    [Locale.Fr]: "Continuer",
+    [Locale.De]: "Weiter",
+  }),
+});
 ```
 
-The dictionaries merge into a single `copy`, and the **last argument wins** any shared message id — in both the values _and_ the types. It mirrors `Object.assign({}, commonTranslations, translations)`: keys unique to either side are all present, and a collision resolves right-to-left. So if both `commonTranslations` and `translations` define `ok`, `intl.copy.ok` takes `translations`' value _and_ its type; flip the argument order and `commonTranslations.ok` wins instead. Put the dictionary you want to override on the right.
+Keys unique to either side all survive; a collision resolves right-to-left, so entries listed after the spread override the shared ones. Spread the input maps — not the `i18n.dictionary(...)` results, which are opaque wrappers whose entries live in a private field — and the merge runs once at module scope, leaving `useI18n(translations)` a single call with the dictionary's per-locale caching intact.
 
 ## Preferred languages
 
