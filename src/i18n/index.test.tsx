@@ -206,13 +206,13 @@ describe("string-first output typing", () => {
         </>
       );
     }
-    const { getByTestId } = render(i18n.withI18n("en", <Probe />));
+    const { getByTestId } = render(i18n.withLocale("en", <Probe />));
     expect(getByTestId("badge")).toHaveTextContent("New");
     expect(getByTestId("tagged")).toHaveTextContent("3");
   });
 });
 
-describe("i18n.withI18n()", () => {
+describe("i18n.withLocale()", () => {
   function LocaleProbe() {
     const { locale } = i18n.useLocale();
     return <span data-testid="locale">{locale}</span>;
@@ -224,14 +224,75 @@ describe("i18n.withI18n()", () => {
   }
 
   it("renders the element inside a Provider bound to the given locale", () => {
-    const { getByTestId } = render(i18n.withI18n("fr", <LocaleProbe />));
+    const { getByTestId } = render(i18n.withLocale("fr", <LocaleProbe />));
     expect(getByTestId("locale")).toHaveTextContent("fr");
   });
 
   it("makes useI18n resolve against the chosen locale", () => {
     const { getByTestId } = render(
-      i18n.withI18n("de", <GreetProbe name="Imogen" />),
+      i18n.withLocale("de", <GreetProbe name="Imogen" />),
     );
     expect(getByTestId("greet")).toHaveTextContent("Hallo, Imogen");
+  });
+});
+
+describe("useI18n() with multiple dictionaries", () => {
+  const base = i18n.dictionary({
+    ok: i18n.constant({ en: "OK", fr: "OK", de: "OK" }),
+    signIn: i18n.constant({
+      en: "Sign in",
+      fr: "Se connecter",
+      de: "Anmelden",
+    }),
+  });
+
+  const common = i18n.dictionary({
+    ok: i18n.constant({ en: "Okay", fr: "D'accord", de: "In Ordnung" }),
+    greet: i18n.template<{ name: string }>({
+      en: ({ tokens }) => `Hi ${tokens.name}`,
+      fr: ({ tokens }) => `Salut ${tokens.name}`,
+      de: ({ tokens }) => `Hi ${tokens.name}`,
+    }),
+  });
+
+  it("merges dictionaries, the last argument winning on a shared key", () => {
+    const { result } = renderHook(() => i18n.useI18n(base, common), {
+      wrapper: wrap("en"),
+    });
+    // Shared key `ok` — `common` is passed last, so its value wins.
+    expect(result.current.copy.ok).toBe("Okay");
+    // Keys unique to either dictionary all survive the merge.
+    expect(result.current.copy.signIn).toBe("Sign in");
+    expect(result.current.copy.greet({ name: "Immy" })).toBe("Hi Immy");
+  });
+
+  it("resolves the collision the other way when the order flips", () => {
+    const { result } = renderHook(() => i18n.useI18n(common, base), {
+      wrapper: wrap("en"),
+    });
+    // `base` is now last, so `base.ok` wins the same collision.
+    expect(result.current.copy.ok).toBe("OK");
+  });
+
+  it("takes the last dictionary's type for a shared key", () => {
+    const withString = i18n.dictionary({
+      value: i18n.constant({ en: "plain", fr: "plain", de: "plain" }),
+    });
+    const withCallable = i18n.dictionary({
+      value: i18n.template<{ count: number }>({
+        en: ({ tokens }) => `count=${tokens.count}`,
+        fr: ({ tokens }) => `count=${tokens.count}`,
+        de: ({ tokens }) => `count=${tokens.count}`,
+      }),
+    });
+    const { result } = renderHook(
+      () => i18n.useI18n(withString, withCallable),
+      { wrapper: wrap("en") },
+    );
+    // `value` is callable here — this line only compiles if the merged type
+    // picked `withCallable`'s template signature over the constant string,
+    // proving last-wins holds in the types, not just the runtime.
+    const rendered: string = result.current.copy.value({ count: 3 });
+    expect(rendered).toBe("count=3");
   });
 });

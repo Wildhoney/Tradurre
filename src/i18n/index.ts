@@ -42,7 +42,10 @@ export class I18n<const L extends string> {
   /** Hook returning the active locale handle from the current provider. */
   readonly useLocale: ReturnType<typeof makeProvider<L>>["useLocale"];
 
-  /** Hook that resolves a {@link Dictionary} against the active locale. */
+  /**
+   * Hook that resolves one or more {@link Dictionary} bundles against the
+   * active locale, merging them last-wins when several are passed.
+   */
   readonly useI18n: ReturnType<typeof makeHooks<L>>["useI18n"];
 
   /**
@@ -170,10 +173,10 @@ export class I18n<const L extends string> {
    *
    * @example
    * ```tsx
-   * render(i18n.withI18n(Locale.Fr, <Welcome name="Imogen" />));
+   * render(i18n.withLocale(Locale.Fr, <Welcome name="Imogen" />));
    * ```
    */
-  withI18n(locale: L, element: ReactNode): ReactElement {
+  withLocale(locale: L, element: ReactNode): ReactElement {
     // eslint-disable-next-line react/no-children-prop -- typed createElement overload requires children in the props object.
     return createElement(this.Provider, { locale, children: element });
   }

@@ -27,14 +27,13 @@
 - [Formatting locale](#formatting-locale)
 - [Locale detection](#locale-detection)
 - [Writing messages](#writing-messages)
-- [Usage](#usage)
-- [Components](#components)
-- [Testing](#testing)
+- [Interpolating components](#interpolating-components)
+- [Testing helper](#testing-helper)
 
 ## Benefits
 
 - Plain TS / JS — interpolation is template literals; every locale-scoped `Intl` type (`NumberFormat`, `DateTimeFormat`, `PluralRules`, `Collator`, `DisplayNames`, `DurationFormat`, `ListFormat`, `RelativeTimeFormat`, `Segmenter`) is injected per formatter.
-- Counting & branching — `plural` (cardinal — *1 item*) and `ordinal` (position — *1st*) are separate factories that can't be confused, and `select` does ICU-style gender/enum branching with a required `other` fallback, all in plain TS.
+- Counting & branching — `plural` (cardinal — _1 item_) and `ordinal` (position — _1st_) are separate factories that can't be confused, and `select` does ICU-style gender/enum branching with a required `other` fallback, all in plain TS.
 - Type-safe arguments — `template<{ name: string }>({...})` enforces the argument shape across every locale.
 - Message-first nesting — each message lives next to its translations.
 - Full coverage enforced — every dictionary entry must define every configured locale; partial coverage is a compile-time error.
@@ -106,6 +105,45 @@ function LanguageSwitcher() {
 ```
 
 `i18n.isLocale(value)` is a type guard returning `value is L`, so `next` narrows to the locale union inside the branch — no casts needed.
+
+### Usage
+
+With the provider mounted, any component reads messages through `useI18n` — hand it the dictionary you defined (see [Writing messages](#writing-messages)):
+
+```tsx
+import { i18n } from "./i18n";
+import { translations } from "./translations";
+
+type WelcomeProps = {
+  name: string;
+};
+
+export function Welcome({ name }: WelcomeProps) {
+  const intl = i18n.useI18n(translations);
+
+  return (
+    <section>
+      <h1>{intl.copy.greet({ name })}</h1>
+      <p>{intl.copy.signIn}</p>
+    </section>
+  );
+}
+```
+
+`useI18n(...)` returns `{ copy, locale }`. `copy` is the fully resolved dictionary — constants land as plain `string` properties (`intl.copy.signIn`); templates land as typed callables (`intl.copy.greet({ name })`, returning `string`). Both default to `string` and widen to `ReactNode` on demand — see [Interpolating components](#interpolating-components). `locale` is the active `Intl.Locale`; reach direction via `intl.locale.getTextInfo().direction` and every other locale-specific bit via the standard `Intl.Locale` API. `format` inside formatters is bound automatically to the active locale.
+
+### Common copy
+
+`useI18n` also accepts **several dictionaries at once**. Hoist shared microcopy — button labels (`OK`, `Save`, `Cancel`), validation messages, anything reused across screens — into a common dictionary, then layer a screen's own copy over it in one call:
+
+```tsx
+import { commonTranslations } from "./common";
+import { translations } from "./translations";
+
+const intl = i18n.useI18n(commonTranslations, translations);
+```
+
+The dictionaries merge into a single `copy`, and the **last argument wins** any shared message id — in both the values _and_ the types. It mirrors `Object.assign({}, commonTranslations, translations)`: keys unique to either side are all present, and a collision resolves right-to-left. So if both `commonTranslations` and `translations` define `ok`, `intl.copy.ok` takes `translations`' value _and_ its type; flip the argument order and `commonTranslations.ok` wins instead. Put the dictionary you want to override on the right.
 
 ## Preferred languages
 
@@ -186,7 +224,9 @@ function BackButton() {
 
   return (
     <ArrowLeftIcon
-      style={{ transform: [{ translateY: 2 }, ...(transform ? [transform] : [])] }}
+      style={{
+        transform: [{ translateY: 2 }, ...(transform ? [transform] : [])],
+      }}
     />
   );
 }
@@ -353,31 +393,7 @@ export const updated = i18n.template<{ name: string; gender: string }>({
 });
 ```
 
-## Usage
-
-```tsx
-import { i18n } from "./i18n";
-import { translations } from "./translations";
-
-type WelcomeProps = {
-  name: string;
-};
-
-export function Welcome({ name }: WelcomeProps) {
-  const intl = i18n.useI18n(translations);
-
-  return (
-    <section>
-      <h1>{intl.copy.greet({ name })}</h1>
-      <p>{intl.copy.signIn}</p>
-    </section>
-  );
-}
-```
-
-`useI18n(...)` returns `{ copy, locale }`. `copy` is the fully resolved dictionary — constants land as plain `string` properties (`intl.copy.signIn`); templates land as typed callables (`intl.copy.greet({ name })`, returning `string`). Both default to `string` and widen to `ReactNode` on demand — see [Components](#components). `locale` is the active `Intl.Locale`; reach direction via `intl.locale.getTextInfo().direction` and every other locale-specific bit via the standard `Intl.Locale` API. `format` inside formatters is bound automatically to the active locale.
-
-## Components
+## Interpolating components
 
 ### Strings for attributes
 
@@ -457,9 +473,9 @@ function ArticleCount({ count }: ArticleCountProps) {
 
 A widened message can still return a bare string from any variant (`string` is a `ReactNode`), so mixing plain text and JSX across locales is fine. The arg type is inferred from the message, so passing the wrong shape is a compile error.
 
-## Testing
+## Testing helper
 
-`i18n.withI18n(locale, element)` wraps any React element in the provider, bound to the given locale. It returns a `ReactElement` you can pass straight to your renderer of choice — no wrapper boilerplate, no separate `<Provider>` import in every test file:
+`i18n.withLocale(locale, element)` wraps any React element in the provider, bound to the given locale. It returns a `ReactElement` you can pass straight to your renderer of choice — no wrapper boilerplate, no separate `<Provider>` import in every test file:
 
 ```tsx
 import { render, screen } from "@testing-library/react";
@@ -467,12 +483,12 @@ import { i18n } from "./i18n";
 import { Welcome } from "./Welcome";
 
 it("greets in French", () => {
-  render(i18n.withI18n(Locale.Fr, <Welcome name="Imogen" />));
+  render(i18n.withLocale(Locale.Fr, <Welcome name="Imogen" />));
   expect(screen.getByRole("heading")).toHaveTextContent("Bonjour, Imogen");
 });
 
 it("greets in German", () => {
-  render(i18n.withI18n(Locale.De, <Welcome name="Imogen" />));
+  render(i18n.withLocale(Locale.De, <Welcome name="Imogen" />));
   expect(screen.getByRole("heading")).toHaveTextContent("Hallo, Imogen");
 });
 ```

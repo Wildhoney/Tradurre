@@ -220,6 +220,69 @@ export type Merged<L extends string, D extends Input<L>> = {
 };
 
 /**
+ * Flattens an intersection (`A & B`) into a single object type so editor
+ * hovers surface the merged shape rather than `A & B`. Type-only cosmetic
+ * used by {@link Overlay}; identity at the value level.
+ *
+ * @typeParam T - Type to flatten.
+ */
+type Prettify<T> = { [K in keyof T]: T[K] };
+
+/**
+ * Last-wins merge of two resolved-copy shapes: every key in `Later` overrides
+ * the same key in `Earlier`, mirroring `Object.assign({}, earlier, later)` at
+ * the type level. Keys unique to either side are preserved. A plain `Earlier &
+ * Later` would *keep* both conflicting members (and collapse two differing
+ * callables into an unusable overloaded intersection) — omitting the shared
+ * keys from `Earlier` first is what makes `Later` genuinely replace them.
+ *
+ * @typeParam Earlier - Lower-precedence copy shape.
+ * @typeParam Later - Higher-precedence copy shape — its keys win on overlap.
+ */
+type Overlay<Earlier, Later> = Prettify<Omit<Earlier, keyof Later> & Later>;
+
+/**
+ * Merges the resolved `copy` shapes of a tuple of dictionary inputs with
+ * last-wins precedence — a key defined by a later dictionary overrides the
+ * same key in an earlier one, in both value (via `Object.assign`) and type.
+ * Folds left-to-right so the final argument passed to `useI18n(...)` wins every
+ * collision, exactly matching the runtime merge.
+ *
+ * @typeParam L - Locale union for this i18n instance.
+ * @typeParam Ds - Tuple of dictionary input shapes, in call-site order.
+ */
+export type MergedInputs<
+  L extends string,
+  Ds extends readonly Input<L>[],
+> = Ds extends readonly [
+  infer Head extends Input<L>,
+  ...infer Rest extends readonly Input<L>[],
+]
+  ? Overlay<Merged<L, Head>, MergedInputs<L, Rest>>
+  : unknown;
+
+/**
+ * Object returned by `i18n.useI18n(...)` when resolving one or more
+ * dictionaries. Pairs the merged `copy` — every passed dictionary combined
+ * with last-wins precedence (see {@link MergedInputs}) — with the active
+ * {@link Intl.Locale}. With a single dictionary it is structurally identical
+ * to {@link ResolvedDictionary}, so existing single-dictionary call sites are
+ * unaffected.
+ *
+ * @typeParam L - Locale union for this i18n instance.
+ * @typeParam Ds - Tuple of dictionary input shapes passed to `useI18n`.
+ */
+export type ResolvedDictionaries<
+  L extends string,
+  Ds extends readonly Input<L>[],
+> = {
+  /** Merged resolved dictionaries — the last dictionary wins on any shared key. */
+  copy: MergedInputs<L, Ds>;
+  /** Active formatting locale as an {@link Intl.Locale} — the display locale with any {@link Formatting} overrides applied. */
+  locale: Intl.Locale;
+};
+
+/**
  * Value returned by {@link LocaleHandle.transform} for mirroring
  * direction-dependent icons: a single React Native transform entry
  * (`{ scaleX: -1 }`) under RTL. Drop it into a transform array
