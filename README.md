@@ -28,6 +28,7 @@
 - [Locale detection](#locale-detection)
 - [Writing messages](#writing-messages)
 - [Interpolating components](#interpolating-components)
+- [Syncing copy](#syncing-copy)
 - [Testing helper](#testing-helper)
 
 ## Benefits
@@ -479,6 +480,67 @@ function ArticleCount({ count }: ArticleCountProps) {
 ```
 
 A widened message can still return a bare string from any variant (`string` is a `ReactNode`), so mixing plain text and JSX across locales is fine. The arg type is inferred from the message, so passing the wrong shape is a compile error.
+
+## Syncing copy
+
+Hand-writing dictionaries is the happy path — but when translation lives in a TMS (Crowdin, Lokalise, Phrase, Transifex, Weblate…), the optional `tradurre` CLI keeps your TypeScript in sync with what translators export. It's a one-shot, provider-agnostic bridge: you own the plain-TS output, the CLI just regenerates it from JSON.
+
+**The model.** Each component keeps one `<locale>.copy.json` per language — a flat `id → string` map — with no file singled out: the source language (`en.copy.json` by default) is just another locale. Your TMS exports every language _in place_ as a sibling (any tool that emits monolingual JSON works). `tradurre apply` globs the copy files, groups them by directory, and for each component creates or updates the dictionary and its token types — taking the source locale's file as the key set and gap-filling the rest from it:
+
+```
+src/components/card/
+  en.copy.json        ← exported by the TMS (source language)
+  fr.copy.json        ← exported by the TMS
+  es.copy.json        ← exported by the TMS
+  index.i18n.ts       ← generated: i18n.dictionary({ … })
+  types.ts            ← generated: export namespace Tokens { … }
+```
+
+```sh
+npx tradurre apply --locale-path=./src/i18n --i18n-path=./src/i18n
+```
+
+Flags split into two families:
+
+| Flag              | Kind                    | Default         | Meaning                                                                       |
+| ----------------- | ----------------------- | --------------- | ----------------------------------------------------------------------------- |
+| `--copy-file`     | glob                    | `*.copy.json`   | discovery glob for copy files; each match's directory is a component          |
+| `--ts-file`       | basename                | `index.i18n.ts` | dictionary file created/updated in each component                             |
+| `--type-file`     | basename                | `types.ts`      | file whose `Tokens` namespace is managed (other types left untouched)         |
+| `--locale-path`   | module path, rel to cwd | —               | where the `Locale` enum is imported from (for the header on _create_)         |
+| `--i18n-path`     | module path, rel to cwd | —               | where the `i18n` instance is imported from                                    |
+| `--common-path`   | module path, rel to cwd | —               | a shared input map to spread as `...common` (see [Common copy](#common-copy)) |
+| `--source-locale` | locale code             | `en`            | the source language; its `<code>.copy.json` is the key set and gap-fill       |
+
+`--*-file` flags are globs/basenames resolved _inside_ each component directory; `--*-path` flags are module specifiers relative to the run directory, re-relativised per component so the emitted `import … from "../../…"` is correct. On modify, your existing import header is preserved untouched; on create, a best-effort header is written for you to adjust once.
+
+**Constants vs. templates.** A copy string with no placeholders becomes an `i18n.constant`; one with ICU arguments becomes an `i18n.template`, and its `Tokens` type is inferred from the ICU (`{amount, number}` → `{ amount: number }`, `{when, date}` → `{ when: Date }`, `{g, select, …}` / bare `{name}` → `string`). A locale that omits a key falls back to the source string, so every entry stays fully covered.
+
+**ICU → TypeScript via a local model.** Constants need nothing. For templated strings, the CLI compiles the ICU into a Tradurre formatter using **Gemma 3n running locally through [Ollama](https://ollama.com)** — no copy ever leaves your machine. Each candidate is run through the TypeScript compiler; if it doesn't parse, the diagnostics are fed back and it retries, and if it still can't produce valid TS it falls back to a constant carrying the raw string plus a `// TODO` so a run is never blocked. Prerequisites:
+
+```sh
+# one-time: install Ollama, then pull the model
+ollama pull gemma3n:e4b
+```
+
+Gemma 3n is designed for on-device inference and runs comfortably on Apple Silicon via Metal (the E4B variant needs ~3 GB). Override the model or server with the `OllamaOptions` when embedding the compiler, or point it at any OpenAI-compatible local runtime.
+
+**Crowdin example.** A `crowdin.yml` that lands translations exactly where `apply` expects them:
+
+```yaml
+project_id_env: CROWDIN_PROJECT_ID
+api_token_env: CROWDIN_API_TOKEN
+preserve_hierarchy: true
+files:
+  - source: /src/**/en.copy.json
+    translation: /src/**/%two_letters_code%.copy.json
+```
+
+```sh
+crowdin download && npx tradurre apply
+```
+
+`%two_letters_code%` normalises regional tags (`es-ES → es`) so they map straight onto your `Locale` enum.
 
 ## Testing helper
 

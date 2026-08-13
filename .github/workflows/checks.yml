@@ -33,6 +33,12 @@ jobs:
       - name: Run checks
         run: make checks
 
+      - name: Crowdin-backed integration test
+        run: pnpm run test:integration
+        env:
+          CROWDIN_API_TOKEN: ${{ secrets.CROWDIN_API_TOKEN }}
+          CROWDIN_PROJECT_ID: ${{ vars.CROWDIN_PROJECT_ID }}
+
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
