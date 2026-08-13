@@ -56,6 +56,10 @@ export default defineConfig(({ mode }) => {
           },
         }
       : {
+          // Disabled so the concurrent CLI build (vite.cli.config.ts) writing
+          // into the same `dist` is not wiped mid-flight; `pnpm run clean`
+          // empties it once before the parallel builds start.
+          emptyOutDir: false,
           lib: {
             entry: resolve(__dirname, "src/index.ts"),
             name: "Tradurre",
@@ -85,6 +89,7 @@ export default defineConfig(({ mode }) => {
         "dist/**",
         "dist-example/**",
         "playwright/**",
+        "integration/**",
       ],
       coverage: {
         provider: "v8",
@@ -97,6 +102,7 @@ export default defineConfig(({ mode }) => {
           "src/example/**",
           "src/index.ts",
           "src/polyfill/index.ts",
+          "src/cli/bin.ts",
         ],
         thresholds: {
           lines: 100,

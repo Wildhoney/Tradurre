@@ -65,7 +65,6 @@ export default defineConfig([
     files: ["**/*.test.{ts,tsx}", "src/tests/**/*.{ts,tsx}"],
     rules: {
       "@typescript-eslint/no-floating-promises": "off",
-      "@typescript-eslint/no-non-null-assertion": "off",
     },
   },
   {
@@ -79,7 +78,12 @@ export default defineConfig([
   },
   {
     files: ["src/**/*.{ts,tsx}"],
-    ignores: ["**/*.test.{ts,tsx}", "src/tests/**", "src/example/**"],
+    ignores: [
+      "**/*.test.{ts,tsx}",
+      "src/tests/**",
+      "src/example/**",
+      "src/cli/bin.ts",
+    ],
     rules: { "no-console": "error" },
   },
 ]);
