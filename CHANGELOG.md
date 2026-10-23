@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.6.0](https://github.com/Wildhoney/Tradurre/compare/v0.5.0...v0.6.0) (2026-10-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **hooks:** i18n.withI18n(locale, element) is now
+i18n.withLocale(locale, element).
+* useLocale().transform is now `MirrorTransform | undefined`
+(`{ scaleX: -1 }`) instead of the CSS string "scaleX(-1)". format.plural() no
+longer accepts a `type` option — use format.ordinal() for ordinals.
+
+### Features
+
+* **hooks:** merge multiple dictionaries in useI18n; rename withI18n to withLocale ([32653aa](https://github.com/Wildhoney/Tradurre/commit/32653aac8e64566c125f112e3c09fb7f4bad1e58))
+* **provider:** add RTL icon-mirroring transform to useLocale handle ([4a9aab8](https://github.com/Wildhoney/Tradurre/commit/4a9aab8ae0bcd88976bb6e9f0ab9f8163585d222))
+* React Native mirroring, ordinal/select, and a formatting locale ([2280cc7](https://github.com/Wildhoney/Tradurre/commit/2280cc78b1d522861e17e2769e87fa5a2ead738c))
+
+
+### Bug Fixes
+
+* bump brace-expansion and js-yaml to patch DoS advisories ([ead1e8c](https://github.com/Wildhoney/Tradurre/commit/ead1e8c388601c2b40f9e260bb08362633d0525d))
+* **deps:** patch fast-uri, fast-xml-parser, js-yaml, postcss advisories ([92019c7](https://github.com/Wildhoney/Tradurre/commit/92019c73916eac8175399d7dec87a1aada6e2be8))
+* resolve open Dependabot security alerts ([310888e](https://github.com/Wildhoney/Tradurre/commit/310888eeb034b7dcb75914f0e05f21cb82315284))
+* resolve remaining vitest and vite Dependabot alerts ([cba27f5](https://github.com/Wildhoney/Tradurre/commit/cba27f5e0478ec7a4ebebed20dfceb5225c42059))
+
 ## [0.5.0](https://github.com/Wildhoney/Tradurre/compare/v0.3.0...v0.5.0) (2026-07-14)
 
 
