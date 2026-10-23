@@ -57,6 +57,28 @@ describe("new I18n()", () => {
     expect(() => new I18n({ locales: [] })).toThrow(/at least one locale/i);
   });
 
+  it("swallows polyfill loader failures instead of crashing boot", async () => {
+    const attempted = Promise.withResolvers<void>();
+    expect(
+      () =>
+        new I18n({
+          locales: ["xx-unsupported"] as const,
+          polyfills: {
+            plural: {
+              polyfill: async () => {
+                attempted.resolve();
+                throw new Error("boom");
+              },
+              data: async () => {},
+            },
+          },
+        }),
+    ).not.toThrow();
+    await attempted.promise;
+    // Let the rejection settle; vitest fails the run on an unhandled rejection.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
   it("resolves Constant entries via the hooks as properties", () => {
     const { result } = renderHook(() => i18n.useI18n(translations), {
       wrapper: wrap("fr"),
