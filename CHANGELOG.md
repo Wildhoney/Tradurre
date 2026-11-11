@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.6.1](https://github.com/Wildhoney/Tradurre/compare/v0.6.0...v0.6.1) (2026-11-11)
+
+
+### Features
+
+* async copy via i18n.dictionary.defer copy modules ([4baf827](https://github.com/Wildhoney/Tradurre/commit/4baf827367cf98a4c4a52c98af451f2c25ff5ae5))
+
+
+### Bug Fixes
+
+* **deps:** patch brace-expansion 5.x CPU denial-of-service advisory ([cddd3a4](https://github.com/Wildhoney/Tradurre/commit/cddd3a4a3569f2762a693ca12f618d854226f6f5)), closes [#47](https://github.com/Wildhoney/Tradurre/issues/47)
+
 ## [0.6.0](https://github.com/Wildhoney/Tradurre/compare/v0.5.0...v0.6.0) (2026-10-23)
 
 
