@@ -1,6 +1,16 @@
-import { createElement, type ReactElement, type ReactNode } from "react";
+import {
+  createElement,
+  isValidElement,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 
 import { makeDetect } from "../detect/index.ts";
+import {
+  DeferredDictionary,
+  everyLocale,
+  makeChangeStore,
+} from "../defer/index.ts";
 import { Dictionary } from "../dictionary/index.ts";
 import { makeHooks } from "../hooks/index.ts";
 import { installPolyfills } from "../polyfill/index.ts";
@@ -8,9 +18,13 @@ import { makeProvider } from "../provider/index.tsx";
 import { Constant, Template } from "../template/index.ts";
 import type {
   ConstantVariant,
+  Contract,
+  Deferrals,
   Formatter,
   I18nConfig,
   Input,
+  Rebrand,
+  SourceOf,
   Variants,
 } from "../types.ts";
 
@@ -56,6 +70,39 @@ export class I18n<const L extends string> {
   /** Type guard narrowing an arbitrary string to the locale union `L`. */
   readonly isLocale: ReturnType<typeof makeDetect<L>>["isLocale"];
 
+  /** Change signal shared by every deferred dictionary this instance creates. */
+  readonly #changes = makeChangeStore();
+
+  /**
+   * Builds a typed {@link Dictionary} from a flat record of message-id →
+   * {@link Template} / {@link Constant}. Every entry must cover every
+   * configured locale — plain `{ en: "OK" }` maps are rejected at compile
+   * time.
+   *
+   * `i18n.dictionary.defer({ ... })` instead builds a dictionary from
+   * per-locale copy modules, so each language ships as its own chunk — see
+   * {@link DeferredDictionary}.
+   */
+  readonly dictionary: {
+    <D extends Input<L>>(entries: D): Dictionary<L, D>;
+    /**
+     * Builds a dictionary from per-locale copy modules kept next to the
+     * component. The source locale maps to its `copy` (imported normally);
+     * every other locale maps to `() => import("./<locale>.copy")`, fetched
+     * the first time a component renders that locale. Until then `intl.copy`
+     * holds placeholders shaped by the source copy (`""` / `() => ""`),
+     * `intl.loaded` is `false`, and a failed import lands on `intl.error`.
+     *
+     * @typeParam Map - Inferred; the bundled copy sets the shape every
+     * deferred module must match key for key, tokens and output included.
+     * @param deferrals - One entry per configured locale: its copy, or a
+     * loader. Keep each `import()` specifier literal so bundlers can split it.
+     */
+    defer<Map extends Deferrals<L>>(
+      deferrals: Map & Contract<Map>,
+    ): DeferredDictionary<L, Rebrand<L, SourceOf<Map>>>;
+  };
+
   /**
    * Constructs a locale-scoped runtime.
    *
@@ -76,28 +123,26 @@ export class I18n<const L extends string> {
     const provider = makeProvider<L>(initial);
     this.Provider = provider.Provider;
     this.useLocale = provider.useLocale;
-    const hooks = makeHooks<L>(provider.useLocale);
+    const hooks = makeHooks<L>(provider.useLocale, this.#changes);
+    const changes = this.#changes;
+    const locales = config.locales;
+    this.dictionary = Object.assign(
+      <D extends Input<L>>(entries: D) => new Dictionary<L, D>(entries),
+      {
+        defer<Map extends Deferrals<L>>(deferrals: Map & Contract<Map>) {
+          return new DeferredDictionary<L, Rebrand<L, SourceOf<Map>>>(
+            deferrals as unknown as Record<L, Rebrand<L, SourceOf<Map>>>,
+            locales,
+            changes.notify,
+          );
+        },
+      },
+    );
     this.useI18n = hooks.useI18n;
     const detector = makeDetect<L>(config.locales, initial);
     this.detect = detector.detect;
     this.isLocale = detector.isLocale;
     void installPolyfills(config.locales, config.polyfills).catch(() => {});
-  }
-
-  /**
-   * Builds a typed {@link Dictionary} from a flat record of message-id →
-   * {@link Template}. Every entry must be wrapped in {@link I18n.template} —
-   * plain `{ en: "OK" }` maps are rejected at compile time.
-   *
-   * @typeParam D - Inferred dictionary shape; preserves per-key argument
-   * types.
-   * @param entries - Object literal whose values are {@link Template}
-   * wrappers produced by {@link I18n.template}.
-   * @returns A {@link Dictionary} instance that `useI18n` will resolve
-   * against the active locale.
-   */
-  dictionary<D extends Input<L>>(entries: D): Dictionary<L, D> {
-    return new Dictionary<L, D>(entries);
   }
 
   /**
@@ -124,12 +169,27 @@ export class I18n<const L extends string> {
    * `{ tokens, format }` into `Out`.
    * @returns A {@link Template} that the dictionary will resolve into a
    * typed callable at lookup time.
+   *
+   * Inside a copy module for {@link I18n.dictionary}`.defer`, pass a single
+   * formatter instead of a locale map — the file is already one locale.
    */
   template<Args, Out = string>(
     variants: Variants<L, Formatter<Args, NoInfer<Out>>>,
+  ): Template<L, Args, Out>;
+  template<Args, Out = string>(
+    formatter: Formatter<Args, NoInfer<Out>>,
+  ): Template<never, Args, Out>;
+  template<Args, Out = string>(
+    variants:
+      | Variants<L, Formatter<Args, NoInfer<Out>>>
+      | Formatter<Args, NoInfer<Out>>,
   ): Template<L, Args, Out> {
+    const map =
+      typeof variants === "function"
+        ? everyLocale(this.locales, variants)
+        : variants;
     return new Template<L, Args, Out>(
-      variants as Variants<L, Formatter<unknown, Out>>,
+      map as Variants<L, Formatter<unknown, Out>>,
     );
   }
 
@@ -152,11 +212,38 @@ export class I18n<const L extends string> {
    * `({ format }) => Out` function.
    * @returns A {@link Constant} that the dictionary resolves into an `Out`
    * property at lookup time.
+   *
+   * Inside a copy module for {@link I18n.dictionary}`.defer`, pass the single
+   * value instead of a locale map — the file is already one locale.
    */
   constant<Out = string>(
     variants: Variants<L, ConstantVariant<NoInfer<Out>>>,
+  ): Constant<L, Out>;
+  constant<Out = string>(
+    variant: ConstantVariant<NoInfer<Out>>,
+  ): Constant<never, Out>;
+  constant<Out = string>(
+    variants:
+      | Variants<L, ConstantVariant<NoInfer<Out>>>
+      | ConstantVariant<NoInfer<Out>>,
   ): Constant<L, Out> {
-    return new Constant<L, Out>(variants as Variants<L, ConstantVariant<Out>>);
+    const map = this.#isLocaleMap(variants)
+      ? variants
+      : everyLocale(this.locales, variants);
+    return new Constant<L, Out>(map as Variants<L, ConstantVariant<Out>>);
+  }
+
+  /**
+   * Tells a locale map (`{ [Locale.En]: … }`) from a single constant value —
+   * a string, a `({ format })` function, or a `ReactNode` such as a JSX
+   * element, which is itself an object.
+   */
+  #isLocaleMap(value: unknown): value is Record<L, unknown> {
+    if (typeof value !== "object" || value === null) return false;
+    if (Array.isArray(value) || isValidElement(value)) return false;
+    return Object.keys(value).every((key) =>
+      (this.locales as readonly string[]).includes(key),
+    );
   }
 
   /**

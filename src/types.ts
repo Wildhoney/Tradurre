@@ -450,4 +450,86 @@ export type ResolvedDictionary<L extends string, D extends Input<L>> = {
    * etc.
    */
   locale: Intl.Locale;
+  /**
+   * `false` while this locale's deferred copy module (see
+   * `i18n.dictionary.defer`) is still loading — `copy` then holds placeholders
+   * (`""` constants, `() => ""` templates) until it arrives and the component
+   * re-renders. Always `true` for an eager dictionary.
+   */
+  loaded: boolean;
+  /**
+   * Why this locale's deferred copy module failed to import, or `undefined`.
+   * Its entries stay placeholders; retry with `dictionary.load(locale)`, and
+   * this clears once the retry succeeds. Always `undefined` for an eager
+   * dictionary.
+   */
+  error: unknown;
+};
+
+/**
+ * Shape of a copy module's `copy` export: message id → a one-locale
+ * `i18n.constant(value)` or `i18n.template(formatter)`.
+ */
+export type Copy = Record<
+  string,
+  Template<never, unknown, unknown> | Constant<never, unknown>
+>;
+
+/**
+ * Re-brands one-locale copy entries onto the full locale union, keeping each
+ * entry's token and output types — the dictionary input `useI18n` resolves.
+ *
+ * @typeParam L - Locale union for this i18n instance.
+ * @typeParam Shape - The source locale's copy.
+ */
+export type Rebrand<L extends string, Shape> = {
+  [Key in keyof Shape]: Shape[Key] extends Template<
+    never,
+    infer Args,
+    infer Out
+  >
+    ? Template<L, Args, Out>
+    : Shape[Key] extends Constant<never, infer Out>
+      ? Constant<L, Out>
+      : never;
+};
+
+/** Imports one locale's copy module. */
+export type Loader<Shape> = () => Promise<{ copy: Shape }>;
+
+/**
+ * Argument to `i18n.dictionary.defer(...)`: every configured locale maps to
+ * either its copy (bundled — the source locale) or a loader (deferred).
+ *
+ * @typeParam L - Locale union for this i18n instance.
+ */
+export type Deferrals<L extends string> = Record<L, Copy | Loader<Copy>>;
+
+/** The bundled (source) copy among a {@link Deferrals} map's values. */
+export type SourceOf<Map> = Extract<Map[keyof Map], Copy>;
+
+/**
+ * Holds every deferred locale to the bundled copy's shape, so a module
+ * missing a key or using different tokens is a compile error at its
+ * `import()`. Intersected with the inferred map rather than inferred from it,
+ * because inferring the shape through a `copy | loader` union falls back to
+ * the bare {@link Copy} constraint and checks nothing.
+ */
+export type Contract<Map> = {
+  [Locale in keyof Map]: Map[Locale] extends Loader<Copy>
+    ? Loader<SourceOf<Map>>
+    : unknown;
+};
+
+/**
+ * Per-instance change signal for deferred dictionaries — `useI18n` reads it
+ * through `useSyncExternalStore` and re-renders whenever `version` bumps.
+ */
+export type ChangeStore = {
+  /** Bumps the version and wakes every subscriber. */
+  notify(): void;
+  /** Registers a listener; returns its unsubscribe function. */
+  subscribe(listener: () => void): () => void;
+  /** Current version — changes whenever a deferred locale settles. */
+  version(): number;
 };

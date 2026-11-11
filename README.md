@@ -28,6 +28,7 @@
 - [Locale detection](#locale-detection)
 - [Writing messages](#writing-messages)
 - [Interpolating components](#interpolating-components)
+- [Async copy](#async-copy)
 - [Testing helper](#testing-helper)
 
 ## Benefits
@@ -40,6 +41,7 @@
 - String-first, JSX-ready — messages resolve to `string` by default, so they drop straight into `alt` / `title` / `aria-label`; widen the output to `ReactNode` with one type parameter when a message embeds JSX (links, styled spans, icons) — no wrapper component.
 - Region ≠ language — a `formatting` override (region, calendar, numbering system, hour cycle) drives every `Intl` factory independently of the message language, so an English UI can format money and dates for the UAE, render Hijri dates, or shape Eastern-Arabic digits.
 - RTL / LTR ready — every resolved bundle carries a full `Intl.Locale`, so `intl.locale.getTextInfo().direction` gives you `"ltr"` or `"rtl"` for the active locale directly, and `useLocale().transform` hands back the React Native transform for mirroring directional icons.
+- Async copy — `i18n.dictionary.defer(...)` splits a component's copy into one small TS module per locale, written with the same `i18n.constant` / `i18n.template`; only the active language is fetched, every module is type-checked against the source locale, and `intl.loaded` / `intl.error` report progress.
 - No runtime DSL — drop the `intl-messageformat` parser entirely.
 
 For runtimes without native `Intl.PluralRules` / `Intl.NumberFormat` / `Intl.DateTimeFormat` (older embedded webviews, some Hermes builds), Tradurre accepts a per-formatter `polyfills` map on `new I18n({...})` — see the [Intl polyfills recipe](./recipes/intl-polyfills.md).
@@ -130,7 +132,7 @@ export function Welcome({ name }: WelcomeProps) {
 }
 ```
 
-`useI18n(...)` returns `{ copy, locale }`. `copy` is the fully resolved dictionary — constants land as plain `string` properties (`intl.copy.signIn`); templates land as typed callables (`intl.copy.greet({ name })`, returning `string`). Both default to `string` and widen to `ReactNode` on demand — see [Interpolating components](#interpolating-components). `locale` is the active `Intl.Locale`; reach direction via `intl.locale.getTextInfo().direction` and every other locale-specific bit via the standard `Intl.Locale` API. `format` inside formatters is bound automatically to the active locale.
+`useI18n(...)` returns `{ copy, locale, loaded, error }`. `copy` is the fully resolved dictionary — constants land as plain `string` properties (`intl.copy.signIn`); templates land as typed callables (`intl.copy.greet({ name })`, returning `string`). Both default to `string` and widen to `ReactNode` on demand — see [Interpolating components](#interpolating-components). `locale` is the active `Intl.Locale`; reach direction via `intl.locale.getTextInfo().direction` and every other locale-specific bit via the standard `Intl.Locale` API. `format` inside formatters is bound automatically to the active locale. `loaded` and `error` only matter for [async copy](#async-copy) — for a dictionary written inline, as above, `loaded` is always `true` and `error` always `undefined`.
 
 ### Common copy
 
@@ -480,6 +482,132 @@ function ArticleCount({ count }: ArticleCountProps) {
 
 A widened message can still return a bare string from any variant (`string` is a `ReactNode`), so mixing plain text and JSX across locales is fine. The arg type is inferred from the message, so passing the wrong shape is a compile error.
 
+## Async copy
+
+Dictionaries written inline bundle every language into your app. To ship each language as its own chunk instead, split a component's copy into one small module per locale — kept **next to the component**, exactly where its inline dictionary would live — and build the dictionary with `i18n.dictionary.defer(...)`:
+
+```
+components/basket/
+├── index.tsx
+├── index.i18n.ts
+├── types.ts
+├── en.copy.tsx
+├── fr.copy.tsx
+└── de.copy.tsx
+```
+
+Each module exports its `copy`, written with the same `i18n.constant` / `i18n.template` as an inline dictionary — just one value or formatter instead of a locale map, since the file already is one locale. Logic stays plain TS: `format`, plurals, `select`, JSX.
+
+```tsx
+// components/basket/fr.copy.tsx
+import type { ReactNode } from "react";
+
+import { i18n } from "../../i18n";
+import type { Tokens } from "./types";
+
+export const copy = {
+  checkout: i18n.constant("Commander"),
+  price: i18n.template<Tokens.Price>(({ tokens, format }) =>
+    format.number({ style: "currency", currency: "EUR" }).format(tokens.amount),
+  ),
+  items: i18n.template<Tokens.Items, ReactNode>(({ tokens, format }) =>
+    format.plural().select(tokens.count) === "one" ? (
+      <b>{tokens.count} article</b>
+    ) : (
+      <b>{tokens.count} articles</b>
+    ),
+  ),
+};
+```
+
+The source locale is imported normally; every other locale is a loader:
+
+```ts
+// components/basket/index.i18n.ts
+import { copy as source } from "./en.copy";
+
+export const translations = i18n.dictionary.defer({
+  [Locale.En]: source,
+  [Locale.Fr]: () => import("./fr.copy"),
+  [Locale.De]: () => import("./de.copy"),
+});
+```
+
+The source copy is the contract: a module missing a key, or using different tokens or output type, is a compile error at its `import()`, and leaving out a configured locale is a compile error too. Components don't change — `i18n.useI18n(translations)` returns the same typed `copy`.
+
+Avoid one app-wide module per language: it brings back the monolithic bundle that colocated copy exists to prevent, ships every screen's strings to every screen, and turns each copy change into a merge conflict. One small module per component per locale keeps each chunk as small as the component it serves. For copy shared between components, see [Sharing copy](#sharing-copy).
+
+### Sharing copy
+
+A copy module's `copy` is a plain object, so it spreads exactly like an inline dictionary input (see [Common copy](#common-copy)). Keep shared microcopy in its own directory, one module per locale, and spread each into the matching locale of a component:
+
+```
+components/
+├── common/
+│   ├── en.copy.ts
+│   ├── fr.copy.ts
+│   └── de.copy.ts
+└── basket/
+    ├── en.copy.tsx
+    ├── fr.copy.tsx
+    └── de.copy.tsx
+```
+
+```ts
+// components/common/fr.copy.ts
+export const copy = {
+  cancel: i18n.constant("Annuler"),
+  back: i18n.constant("Retour"),
+};
+```
+
+```tsx
+// components/basket/fr.copy.tsx
+import { copy as common } from "../common/fr.copy";
+
+export const copy = {
+  ...common,
+  // listed after the spread, so it overrides common's `back`
+  back: i18n.constant("Retour au panier"),
+  checkout: i18n.constant("Commander"),
+};
+```
+
+The last key wins, in both the value and the type. Spreading several modules works the same way: `{ ...common, ...forms, checkout: … }`.
+
+Spread keys are part of the contract too. The source module (`en.copy.tsx`) spreads `../common/en.copy`, so a translation that forgets its own spread is missing `cancel` and `back`, which is a compile error at its `import()`. Spread the **same locale's** module: the types can't tell `common/en.copy` from `common/fr.copy`, so spreading the wrong one compiles and shows English copy to French users.
+
+A shared module spread into a deferred locale is downloaded with that locale, not up front. Bundlers put it in its own chunk when several components spread it, so it's fetched once.
+
+Import shared modules statically rather than with `await import(...)`. A top-level `await` does work — the locale's `import()` only resolves once the module and everything it awaits have loaded, so `intl.loaded` and `intl.error` cover the nested import too — but it's worse on every count:
+
+- **Slower** — the nested file is only requested after the outer one has downloaded and run, two requests back to back instead of one parallel fetch.
+- **Less portable** — Metro / Hermes (React Native) don't support top-level `await`, and Vite and webpack need a modern enough build target.
+- **Unnecessary** — a static import inside a deferred module is already deferred with it.
+
+Never load copy inside a function in a copy module (`async function load() { … }`): the module counts as loaded before that work finishes, so `intl.loaded` turns `true` too early and nothing re-renders when it completes.
+
+A deferred locale is imported the first time a component renders it — a French user never downloads `de.copy`. Until it arrives, `copy` holds placeholders shaped by the source copy (`""` for constants, `() => ""` for templates), then every component using it re-renders. `useI18n(...)` tells you where loading is:
+
+- `intl.loaded` — `false` while the active locale's module is still loading.
+- `intl.error` — whatever the import rejected with, or `undefined`. The placeholders stay.
+
+```tsx
+function Checkout() {
+  const intl = i18n.useI18n(translations);
+  const { locale } = i18n.useLocale();
+
+  if (intl.error) {
+    return <Button onClick={() => translations.load(locale)}>Retry</Button>;
+  }
+  return <Button loading={!intl.loaded}>{intl.copy.checkout}</Button>;
+}
+```
+
+A failed module is never re-imported on its own — retry it with `translations.load(locale)`, after which `intl.error` clears and the copy appears. `load()` also preloads: call it when a user hovers a language picker so the switch renders without a blank frame.
+
+Keep each `import("./fr.copy")` specifier a string literal, so Vite, webpack and Metro can split every module into its own chunk. One-locale `i18n.constant(value)` / `i18n.template(formatter)` entries are only for copy modules — putting one in an inline `i18n.dictionary({...})` is a compile error, since it covers a single locale.
+
 ## Testing helper
 
 `i18n.withLocale(locale, element)` wraps any React element in the provider, bound to the given locale. It returns a `ReactElement` you can pass straight to your renderer of choice — no wrapper boilerplate, no separate `<Provider>` import in every test file:
@@ -497,6 +625,18 @@ it("greets in French", () => {
 it("greets in German", () => {
   render(i18n.withLocale(Locale.De, <Welcome name="Imogen" />));
   expect(screen.getByRole("heading")).toHaveTextContent("Hallo, Imogen");
+});
+```
+
+For [async copy](#async-copy), `await` the locale's `load()` before rendering so the first render already has the copy:
+
+```tsx
+import { translations } from "./index.i18n";
+
+it("checks out in French", async () => {
+  await translations.load(Locale.Fr);
+  render(i18n.withLocale(Locale.Fr, <Checkout />));
+  expect(screen.getByRole("button")).toHaveTextContent("Commander");
 });
 ```
 
