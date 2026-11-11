@@ -8,5 +8,11 @@
     "noEmit": false
   },
   "include": ["src/**/*"],
-  "exclude": ["**/*.test.ts", "**/*.test.tsx", "src/tests/**", "src/example/**"]
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "src/tests/**",
+    "src/**/fixture/**",
+    "src/example/**"
+  ]
 }

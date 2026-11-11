@@ -42,6 +42,7 @@ export default defineConfig(({ mode }) => {
               "src/**/*.test.ts",
               "src/**/*.test.tsx",
               "src/tests/**",
+              "src/**/fixture/**",
               "src/example/**",
             ],
             rollupTypes: true,
