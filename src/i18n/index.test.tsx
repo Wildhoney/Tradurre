@@ -198,8 +198,8 @@ describe("string-first output typing", () => {
   });
 
   it("rejects JSX in a string-default template at the type level", () => {
+    // @ts-expect-error - string is the default output; use template<Args, ReactNode> for JSX
     i18n.template<{ name: string }>({
-      // @ts-expect-error - string is the default output; use template<Args, ReactNode> for JSX
       en: ({ tokens }) => <b>{tokens.name}</b>,
       fr: ({ tokens }) => `Bonjour, ${tokens.name}`,
       de: ({ tokens }) => `Hallo, ${tokens.name}`,
